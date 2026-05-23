@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Radio Station</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    color: #f0ede6;
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .scanline {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none; z-index: 0;
+  }
+
+  .container {
+    max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;
+    position: relative; z-index: 1;
+  }
+
+  .station-header {
+    display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem;
+  }
+
+  .station-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px; letter-spacing: 2px; color: #e8c840; line-height: 1;
+  }
+
+  .station-tag {
+    font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
+    color: #888; margin-left: auto;
+  }
+
+  .freq-bar {
+    height: 2px; background: #e8c840; margin-bottom: 2rem;
+    box-shadow: 0 0 8px #e8c840;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  .setup-panel {
+    background: #111; border: 0.5px solid #2a2a2a;
+    border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+  }
+
+  .setup-label {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: #555; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;
+  }
+
+  .setup-label::after {
+    content: ''; flex: 1; height: 0.5px; background: #2a2a2a;
+  }
+
+  input[type="text"], input[type="password"] {
+    width: 100%; background: #0a0a0a; border: 0.5px solid #2a2a2a;
+    border-radius: 4px; padding: 10px 14px; color: #f0ede6;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus {
+    border-color: #e8c840;
+  }
+
+  .row { display: flex; gap: 1rem; margin-top: 1rem; }
+  .col { flex: 1; }
+  .col label { font-size: 12px; color: #666; margin-bottom: 6px; display: block; }
+
+  .voice-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.5rem;
+  }
+
+  .voice-btn {
+    background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px;
+    padding: 8px 6px; cursor: pointer; text-align: center;
+    transition: all 0.15s; color: #888; font-size: 12px; font-family: 'DM Sans', sans-serif;
+  }
+
+  .voice-btn:hover { border-color: #555; color: #ccc; }
+  .voice-btn.active { border-color: #e8c840; color: #e8c840; background: #1a1700; }
+  .voice-btn .vname { font-weight: 500; display: block; font-size: 13px; color: inherit; }
+  .voice-btn .vdesc { font-size: 10px; color: #555; margin-top: 2px; display: block; }
+  .voice-btn.active .vdesc { color: #a08820; }
+
+  .upload-zone {
+    border: 1px dashed #2a2a2a; border-radius: 6px; padding: 2rem;
+    text-align: center; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
+    position: relative; overflow: hidden;
+  }
+
+  .upload-zone:hover { border-color: #e8c840; background: #0f0f00; }
+  .upload-zone .upload-icon { font-size: 28px; margin-bottom: 8px; color: #444; }
+  .upload-text { font-size: 13px; color: #666; }
+  .upload-text span { color: #e8c840; }
+
+  .track-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 6px; }
+
+  .track-item {
+    background: #0a0a0a; border: 0.5px solid #1e1e1e; border-radius: 4px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.15s; cursor: pointer;
+  }
+
+  .track-item:hover { border-color: #333; }
+  .track-item.playing { border-color: #e8c840; }
+
+  .track-num { font-family: 'Bebas Neue', sans-serif; font-size: 14px; color: #444; min-width: 18px; text-align: center; }
+  .track-info { flex: 1; min-width: 0; }
+  .track-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-artist { font-size: 11px; color: #555; }
+  .track-dur { font-size: 11px; color: #444; font-variant-numeric: tabular-nums; }
+  .track-del {
+    background: none; border: none; color: #333; cursor: pointer;
+    font-size: 18px; padding: 2px 6px; line-height: 1; transition: color 0.15s;
+  }
+  .track-del:hover { color: #cc3333; }
+
+  .equalizer {
+    display: flex; align-items: flex-end; gap: 3px; height: 20px;
+  }
+
+  .eq-bar {
+    width: 3px; background: #e8c840; border-radius: 1px;
+    animation: eqAnim 0.4s ease-in-out infinite alternate;
+  }
+  .eq-bar:nth-child(1) { animation-duration: 0.45s; }
+  .eq-bar:nth-child(2) { animation-duration: 0.38s; animation-delay: 0.1s; }
+  .eq-bar:nth-child(3) { animation-duration: 0.52s; animation-delay: 0.05s; }
+  .eq-bar:nth-child(4) { animation-duration: 0.42s; animation-delay: 0.15s; }
+
+  @keyframes eqAnim { from { height: 4px; } to { height: 18px; } }
+
+  .player-bar {
+    background: #111; border: 0.5px solid #2a2a2a; border-radius: 8px;
+    padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .now-playing-label {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555;
+  }
+
+  .now-playing-track {
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px;
+    color: #f0ede6; line-height: 1; margin-top: 2px;
+  }
+
+  .now-playing-artist { font-size: 13px; color: #888; margin-top: 4px; }
+
+  .progress-row { display: flex; align-items: center; gap: 10px; }
+  .time-label { font-size: 11px; color: #444; min-width: 36px; font-variant-numeric: tabular-nums; }
+
+  input[type="range"].progress {
+    flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+    background: #222; border-radius: 2px; outline: none; cursor: pointer; border: none; padding: 0;
+  }
+  input[type="range"].progress::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px;
+    background: #e8c840; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 4px #e8c840;
+  }
+
+  .controls { display: flex; align-items: center; gap: 1rem; }
+
+  .ctrl-btn {
+    background: none; border: none; cursor: pointer; color: #888;
+    font-size: 20px; padding: 4px; transition: color 0.15s; line-height: 1;
+  }
+  .ctrl-btn:hover { color: #f0ede6; }
+  .ctrl-btn.shuffle-on { color: #e8c840; }
+
+  .play-btn {
+    width: 48px; height: 48px; border-radius: 50%; background: #e8c840;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: #0a0a0a; transition: all 0.15s; margin: 0 8px;
+  }
+  .play-btn:hover { background: #f5d840; transform: scale(1.05); }
+  .play-btn:active { transform: scale(0.97); }
+
+  .vol-row { display: flex; align-items: center; gap: 10px; }
+  .vol-icon { color: #444; font-size: 16px; }
+
+  input[type="range"].vol {
+    width: 80px; height: 3px; -webkit-appearance: none; appearance: none;
+    background: #222; border-radius: 2px; outline: none; cursor: pointer; border: none; padding: 0;
+  }
+  input[type="range"].vol::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 10px; height: 10px;
+    background: #666; border-radius: 50%;
+  }
+
+  .dj-drop-panel {
+    background: #0a0f00; border: 0.5px solid #2a3a0a; border-radius: 8px;
+    padding: 1.25rem 1.5rem; margin-bottom: 2rem;
+  }
+
+  .dj-status { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
+
+  .dj-indicator {
+    width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .dj-indicator.active {
+    background: #88cc00; box-shadow: 0 0 6px #88cc00;
+    animation: blink 1s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .dj-label { font-size: 12px; color: #556633; letter-spacing: 1px; }
+  .dj-text { font-size: 14px; color: #aac040; line-height: 1.5; font-style: italic; min-height: 44px; }
+  .dj-text.idle { color: #445522; font-style: normal; font-size: 13px; }
+
+  .action-row { display: flex; gap: 10px; margin-top: 1rem; }
+
+  .btn-primary {
+    flex: 1; background: #e8c840; border: none; border-radius: 4px;
+    padding: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+    color: #0a0a0a; cursor: pointer; letter-spacing: 0.5px; transition: all 0.15s;
+  }
+  .btn-primary:hover { background: #f5d840; }
+  .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: none; border: 0.5px solid #2a2a2a; border-radius: 4px;
+    padding: 12px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: #888; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: #555; color: #ccc; }
+
+  .api-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; margin-left: auto;
+  }
+  .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; }
+  .api-dot.ok { background: #88cc00; }
+  .api-dot.err { background: #cc4444; }
+
+  .toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: #e8c840; color: #0a0a0a; padding: 10px 20px; border-radius: 4px;
+    font-size: 13px; font-weight: 500; z-index: 999;
+    transition: transform 0.3s ease; pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .empty-state {
+    text-align: center; padding: 2rem; color: #444; font-size: 13px;
+  }
+
+  audio { display: none; }
+</style>
+</head>
+<body>
+
+<div class="scanline"></div>
+<audio id="audioPlayer"></audio>
+
+<div class="container">
+
+  <div class="station-header">
+    <div class="station-name" id="stationDisplay">Non Stop House</div>
+    <div class="station-tag">Your Personal Radio Station</div>
+  </div>
+  <div class="freq-bar"></div>
+
+  <!-- Station Setup -->
+  <div class="setup-panel">
+    <div class="setup-label">Station Setup</div>
+    <div class="row" style="margin-top:0;">
+      <div class="col">
+        <label>Station Name</label>
+        <input type="text" id="stationName" placeholder="e.g. RADIO X, HOT 97, WAVY FM" value="Non Stop House">
+      </div>
+      <div class="col">
+        <label>DJ Name</label>
+        <input type="text" id="djName" placeholder="e.g. DJ Phantom, Big Mike">
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <label>ElevenLabs API Key</label>
+        <input type="password" id="apiKey" placeholder="sk_...">
+      </div>
+      <div class="col" style="display:flex; align-items:flex-end; gap:10px; padding-bottom:2px;">
+        <button class="btn-secondary" style="flex:1" onclick="testApiKey()">Test Key</button>
+        <span class="api-status">
+          <span class="api-dot" id="apiDot"></span>
+          <span id="apiStatusText" style="color:#444">Not tested</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Voice Selection -->
+  <div class="setup-panel">
+    <div class="setup-label">DJ Voice</div>
+    <div class="voice-grid" id="voiceGrid">
+      <button class="voice-btn active" data-id="pNInz6obpgDQGcFmaJgB" onclick="selectVoice(this)">
+        <span class="vname">Adam</span><span class="vdesc">Deep & Hype</span>
+      </button>
+      <button class="voice-btn" data-id="ErXwobaYiN019PkySvjV" onclick="selectVoice(this)">
+        <span class="vname">Antoni</span><span class="vdesc">Smooth & Clear</span>
+      </button>
+      <button class="voice-btn" data-id="VR6AewLTigWG4xSOukaG" onclick="selectVoice(this)">
+        <span class="vname">Arnold</span><span class="vdesc">Powerful & Bold</span>
+      </button>
+      <button class="voice-btn" data-id="EXAVITQu4vr4xnSDxMaL" onclick="selectVoice(this)">
+        <span class="vname">Bella</span><span class="vdesc">Energetic & Fun</span>
+      </button>
+      <button class="voice-btn" data-id="MF3mGyEYCl7XYWbV9V6O" onclick="selectVoice(this)">
+        <span class="vname">Elli</span><span class="vdesc">Young & Spunky</span>
+      </button>
+      <button class="voice-btn" data-id="TxGEqnHWrfWFTfGW9XjX" onclick="selectVoice(this)">
+        <span class="vname">Josh</span><span class="vdesc">Warm & Casual</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Track Upload -->
+  <div class="setup-panel">
+    <div class="setup-label">Your Tracks</div>
+    <div class="upload-zone"
+      id="uploadZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="handleDragOver(event)"
+      ondragleave="handleDragLeave(event)"
+      ondrop="handleDrop(event)">
+      <input type="file" id="fileInput" accept="audio/*" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div class="upload-icon"><i class="ti ti-music-plus" aria-hidden="true"></i></div>
+      <div class="upload-text">Drop MP3s here or <span>browse files</span></div>
+      <div style="font-size:11px;color:#333;margin-top:6px;">Tip: Name files as "Artist - Title.mp3" for best results</div>
+    </div>
+    <div class="track-list" id="trackList">
+      <div class="empty-state">No tracks yet — add some music above</div>
+    </div>
+  </div>
+
+  <!-- Player -->
+  <div class="player-bar">
+    <div>
+      <div class="now-playing-label">Now Playing</div>
+      <div class="now-playing-track" id="nowPlayingTitle">— NOTHING LOADED —</div>
+      <div class="now-playing-artist" id="nowPlayingArtist">Add tracks and hit play</div>
+    </div>
+    <div class="progress-row">
+      <span class="time-label" id="currentTime">0:00</span>
+      <input type="range" class="progress" id="progressBar" min="0" max="100" value="0" step="0.1" oninput="seekTo(this.value)">
+      <span class="time-label" id="totalTime" style="text-align:right">0:00</span>
+    </div>
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="controls">
+        <button class="ctrl-btn" id="shuffleBtn" title="Shuffle" onclick="toggleShuffle()">
+          <i class="ti ti-arrows-shuffle" aria-hidden="true"></i>
+        </button>
+        <button class="ctrl-btn" onclick="prevTrack()" title="Previous">
+          <i class="ti ti-player-skip-back" aria-hidden="true"></i>
+        </button>
+        <button class="play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">
+          <i class="ti ti-player-play" aria-hidden="true" id="playIcon"></i>
+        </button>
+        <button class="ctrl-btn" onclick="nextTrack(false)" title="Next">
+          <i class="ti ti-player-skip-forward" aria-hidden="true"></i>
+        </button>
+        <div class="equalizer" id="equalizer" style="display:none" aria-hidden="true">
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+          <div class="eq-bar"></div>
+        </div>
+      </div>
+      <div class="vol-row">
+        <i class="ti ti-volume vol-icon" aria-hidden="true"></i>
+        <input type="range" class="vol" id="volSlider" min="0" max="100" value="80" step="1" oninput="setVolume(this.value)" aria-label="Volume">
+      </div>
+    </div>
+  </div>
+
+  <!-- DJ Drop Panel -->
+  <div class="dj-drop-panel">
+    <div class="dj-status">
+      <div class="dj-indicator" id="djIndicator"></div>
+      <div class="dj-label" id="djLabel">DJ OFFLINE</div>
+    </div>
+    <div class="dj-text idle" id="djText">
+      Set up your API key and add some tracks to get started. The DJ will announce songs between tracks automatically.
+    </div>
+    <div class="action-row">
+      <button class="btn-primary" id="startBtn" onclick="startStation()" disabled>Start Station</button>
+      <button class="btn-secondary" onclick="requestDrop()">DJ Drop</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  const audio = document.getElementById('audioPlayer');
+  let tracks = [];
+  let currentIndex = 0;
+  let isPlaying = false;
+  let isShuffle = false;
+  let selectedVoice = 'pNInz6obpgDQGcFmaJgB';
+  let djActive = false;
+  let isSpeaking = false;
+
+  // ── Toast ──────────────────────────────────────────────
+  function toast(msg, dur = 2500) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), dur);
+  }
+
+  // ── Station Name ───────────────────────────────────────
+  document.getElementById('stationName').addEventListener('input', function () {
+    document.getElementById('stationDisplay').textContent = this.value.toUpperCase() || 'RADIO X';
+  });
+
+  // ── Voice Selection ────────────────────────────────────
+  function selectVoice(btn) {
+    document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedVoice = btn.dataset.id;
+  }
+
+  // ── Time Formatting ────────────────────────────────────
+  function formatTime(s) {
+    if (isNaN(s) || s === Infinity) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return m + ':' + String(sec).padStart(2, '0');
+  }
+
+  // ── Parse Filename for Artist/Title ───────────────────
+  function parseMeta(filename) {
+    const clean = filename.replace(/\.[^.]+$/, '');
+    const parts = clean.split(' - ');
+    if (parts.length >= 2) {
+      return { artist: parts[0].trim(), title: parts.slice(1).join(' - ').trim() };
+    }
+    return { artist: 'Unknown Artist', title: clean };
+  }
+
+  // ── File Handling ──────────────────────────────────────
+  function handleFiles(files) {
+    Array.from(files).forEach(f => {
+      if (!f.type.startsWith('audio/')) return;
+      const url = URL.createObjectURL(f);
+      const meta = parseMeta(f.name);
+      const track = { url, name: f.name, title: meta.title, artist: meta.artist, duration: 0 };
+      tracks.push(track);
+      const idx = tracks.length - 1;
+      const tmp = new Audio(url);
+      tmp.addEventListener('loadedmetadata', () => {
+        tracks[idx].duration = tmp.duration;
+        renderTracks();
+      });
+    });
+    renderTracks();
+    document.getElementById('startBtn').disabled = tracks.length === 0;
+  }
+
+  // ── Drag & Drop ────────────────────────────────────────
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('uploadZone').style.borderColor = '#e8c840';
+    document.getElementById('uploadZone').style.background = '#0f0f00';
+  }
+
+  function handleDragLeave() {
+    document.getElementById('uploadZone').style.borderColor = '#2a2a2a';
+    document.getElementById('uploadZone').style.background = '';
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    handleDragLeave();
+    handleFiles(e.dataTransfer.files);
+  }
+
+  // ── Render Track List ──────────────────────────────────
+  function renderTracks() {
+    const list = document.getElementById('trackList');
+    if (tracks.length === 0) {
+      list.innerHTML = '<div class="empty-state">No tracks yet — add some music above</div>';
+      return;
+    }
+    list.innerHTML = tracks.map((t, i) => `
+      <div class="track-item ${i === currentIndex && isPlaying ? 'playing' : ''}" onclick="playIndex(${i})">
+        <div class="track-num">${i === currentIndex && isPlaying ? '▶' : i + 1}</div>
+        <div class="track-info">
+          <div class="track-title">${escapeHtml(t.title)}</div>
+          <div class="track-artist">${escapeHtml(t.artist)}</div>
+        </div>
+        <div class="track-dur">${formatTime(t.duration)}</div>
+        <button class="track-del" onclick="event.stopPropagation(); removeTrack(${i})" title="Remove track" aria-label="Remove ${escapeHtml(t.title)}">×</button>
+      </div>
+    `).join('');
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function removeTrack(i) {
+    URL.revokeObjectURL(tracks[i].url);
+    tracks.splice(i, 1);
+    if (currentIndex >= tracks.length) currentIndex = Math.max(0, tracks.length - 1);
+    renderTracks();
+    document.getElementById('startBtn').disabled = tracks.length === 0;
+  }
+
+  // ── Playback ───────────────────────────────────────────
+  function playIndex(i) {
+    currentIndex = i;
+    loadAndPlay();
+  }
+
+  async function loadAndPlay() {
+    if (tracks.length === 0) return;
+    const t = tracks[currentIndex];
+    audio.src = t.url;
+    audio.volume = document.getElementById('volSlider').value / 100;
+    try {
+      await audio.play();
+      isPlaying = true;
+      updatePlayBtn();
+      document.getElementById('nowPlayingTitle').textContent = t.title.toUpperCase();
+      document.getElementById('nowPlayingArtist').textContent = t.artist;
+      document.getElementById('equalizer').style.display = 'flex';
+      renderTracks();
+    } catch (e) {
+      console.error('Playback error:', e);
+      toast('Playback failed — check browser permissions');
+    }
+  }
+
+  function togglePlay() {
+    if (tracks.length === 0) { toast('Add some tracks first!'); return; }
+    if (isPlaying) {
+      audio.pause();
+      isPlaying = false;
+      document.getElementById('equalizer').style.display = 'none';
+    } else {
+      if (!audio.src || audio.src === window.location.href) {
+        loadAndPlay(); return;
+      }
+      audio.play();
+      isPlaying = true;
+      document.getElementById('equalizer').style.display = 'flex';
+    }
+    updatePlayBtn();
+    renderTracks();
+  }
+
+  function updatePlayBtn() {
+    document.getElementById('playIcon').className = isPlaying ? 'ti ti-player-pause' : 'ti ti-player-play';
+  }
+
+  function prevTrack() {
+    if (tracks.length === 0) return;
+    currentIndex = (currentIndex - 1 + tracks.length) % tracks.length;
+    loadAndPlay();
+  }
+
+  function nextTrack(fromEnd = false) {
+    if (tracks.length === 0) return;
+    if (isShuffle) {
+      let next;
+      do { next = Math.floor(Math.random() * tracks.length); }
+      while (tracks.length > 1 && next === currentIndex);
+      currentIndex = next;
+    } else {
+      currentIndex = (currentIndex + 1) % tracks.length;
+    }
+    if (fromEnd && djActive) {
+      doDjDrop(true);
+    } else {
+      loadAndPlay();
+    }
+  }
+
+  function toggleShuffle() {
+    isShuffle = !isShuffle;
+    document.getElementById('shuffleBtn').classList.toggle('shuffle-on', isShuffle);
+    toast(isShuffle ? 'Shuffle on 🔀' : 'Shuffle off');
+  }
+
+  // ── Progress & Volume ──────────────────────────────────
+  function seekTo(val) {
+    if (audio.duration && isFinite(audio.duration)) {
+      audio.currentTime = (val / 100) * audio.duration;
+    }
+  }
+
+  function setVolume(val) {
+    audio.volume = val / 100;
+  }
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration || !isFinite(audio.duration)) return;
+    const pct = (audio.currentTime / audio.duration) * 100;
+    document.getElementById('progressBar').value = pct.toFixed(1);
+    document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+    document.getElementById('totalTime').textContent = formatTime(audio.duration);
+  });
+
+  audio.addEventListener('ended', () => {
+    isPlaying = false;
+    updatePlayBtn();
+    document.getElementById('equalizer').style.display = 'none';
+    nextTrack(true);
+  });
+
+  // ── API Key Test ───────────────────────────────────────
+  async function testApiKey() {
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) { toast('Enter your API key first'); return; }
+    const dot = document.getElementById('apiDot');
+    const txt = document.getElementById('apiStatusText');
+    txt.textContent = 'Testing...'; txt.style.color = '#888';
+    try {
+      const r = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': key }
+      });
+      if (r.ok) {
+        dot.className = 'api-dot ok';
+        txt.textContent = 'Connected'; txt.style.color = '#88cc00';
+        toast('API key works! ✓');
+      } else {
+        dot.className = 'api-dot err';
+        txt.textContent = 'Invalid key'; txt.style.color = '#cc4444';
+        toast('Invalid API key');
+      }
+    } catch (e) {
+      dot.className = 'api-dot err';
+      txt.textContent = 'Network error'; txt.style.color = '#cc4444';
+      toast('Network error — check your connection');
+    }
+  }
+
+  // ── Start Station ──────────────────────────────────────
+  function startStation() {
+    if (tracks.length === 0) { toast('Add tracks first!'); return; }
+    djActive = true;
+    document.getElementById('djIndicator').classList.add('active');
+    document.getElementById('djLabel').textContent = 'DJ LIVE';
+    document.getElementById('startBtn').textContent = '📡 Station Live';
+    document.getElementById('startBtn').disabled = true;
+    loadAndPlay();
+    toast('Station is LIVE!');
+  }
+
+  // ── DJ Script Builder ──────────────────────────────────
+  function buildDropScript(isTransition) {
+    const station = document.getElementById('stationName').value.trim() || 'Radio X';
+    const djName = document.getElementById('djName').value.trim() || 'your DJ';
+    const current = tracks[currentIndex];
+    const prevIdx = (currentIndex - 1 + tracks.length) % tracks.length;
+    const prev = tracks[prevIdx];
+
+    const openers = [
+      "YEAAH!", "LET'S GO!", "UH!", "THAT'S WHAT I'M TALKING ABOUT!",
+      "STAY LOCKED IN!", "CAN'T STOP WON'T STOP!", "THIS IS YOUR STATION!",
+      "WE ARE NOT SLOWING DOWN!", "TURN IT UP!"
+    ];
+    const opener = openers[Math.floor(Math.random() * openers.length)];
+
+    if (isTransition && prev && current && prev !== current) {
+      return `${opener} You just heard ${prev.title} by ${prev.artist} — only on ${station}! ` +
+             `I'm ${djName}, keeping it hot all day! Up next, we're running it with ` +
+             `${current.title} by ${current.artist}! Don't touch that dial — ` +
+             `${station}, the only station that never stops!`;
+    } else if (current) {
+      return `${opener} ${djName} in the building and we are LIVE on ${station}! ` +
+             `You're locked in with ${current.title} by ${current.artist}! ` +
+             `${station} — all day, every day, we never stop the music!`;
+    } else {
+      return `${opener} ${djName} here, you're listening to ${station}! ` +
+             `The hottest station around — we NEVER stop! Stay locked in!`;
+    }
+  }
+
+  // ── ElevenLabs DJ Drop ─────────────────────────────────
+  async function doDjDrop(thenPlayNext = false) {
+    if (isSpeaking) { if (thenPlayNext) loadAndPlay(); return; }
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) { if (thenPlayNext) loadAndPlay(); return; }
+
+    const script = buildDropScript(thenPlayNext);
+    isSpeaking = true;
+    document.getElementById('djIndicator').classList.add('active');
+    document.getElementById('djText').className = 'dj-text';
+    document.getElementById('djText').textContent = '🎙 ' + script;
+
+    try {
+      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': key,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: script,
+          model_id: 'eleven_monolingual_v1',
+          voice_settings: {
+            stability: 0.35,
+            similarity_boost: 0.8,
+            style: 0.6,
+            use_speaker_boost: true
+          }
+        })
+      });
+
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        console.error('ElevenLabs error:', err);
+        isSpeaking = false;
+        if (thenPlayNext) loadAndPlay();
+        return;
+      }
+
+      const blob = await r.blob();
+      const dropUrl = URL.createObjectURL(blob);
+      const dropAudio = new Audio(dropUrl);
+      dropAudio.volume = audio.volume;
+      dropAudio.play();
+      dropAudio.addEventListener('ended', () => {
+        URL.revokeObjectURL(dropUrl);
+        isSpeaking = false;
+        if (thenPlayNext) loadAndPlay();
+      });
+      dropAudio.addEventListener('error', () => {
+        isSpeaking = false;
+        if (thenPlayNext) loadAndPlay();
+      });
+    } catch (e) {
+      console.error('DJ drop error:', e);
+      isSpeaking = false;
+      if (thenPlayNext) loadAndPlay();
+    }
+  }
+
+  function requestDrop() {
+    const key = document.getElementById('apiKey').value.trim();
+    if (!key) { toast('Add your ElevenLabs key first'); return; }
+    if (tracks.length === 0) { toast('Add some tracks first'); return; }
+    doDjDrop(false);
+  }
+</script>
+
+</body>
+</html>
