@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Personal Radio Station</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   body {
     background: #0a0a0a;
@@ -15,6 +17,7 @@
     font-family: 'DM Sans', sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
   }
 
   .scanline {
@@ -23,383 +26,342 @@
     pointer-events: none; z-index: 0;
   }
 
-  .container {
-    max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem;
-    position: relative; z-index: 1;
-  }
+  .container { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
 
-  .station-header {
-    display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem;
-  }
+  .station-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .station-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: #e8c840; line-height: 1; }
+  .station-tag { font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: #888; margin-left: auto; }
 
-  .station-name {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 52px; letter-spacing: 2px; color: #e8c840; line-height: 1;
-  }
-
-  .station-tag {
-    font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
-    color: #888; margin-left: auto;
-  }
-
-  .freq-bar {
-    height: 2px; background: #e8c840; margin-bottom: 2rem;
-    box-shadow: 0 0 8px #e8c840;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
+  .freq-bar { height: 2px; background: #e8c840; margin-bottom: 2rem; animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
-  .setup-panel {
-    background: #111; border: 0.5px solid #2a2a2a;
-    border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;
+  /* ── Playlist Selector ── */
+  .playlist-section { margin-bottom: 1.5rem; }
+  .playlist-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .playlist-label::after { content: ''; flex: 1; height: 0.5px; background: #2a2a2a; }
+
+  .playlist-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+  @media (min-width: 480px) { .playlist-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 640px) { .playlist-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  .playlist-card {
+    background: #111; border: 0.5px solid #2a2a2a; border-radius: 8px;
+    padding: 14px 12px; cursor: pointer; transition: all 0.18s;
+    display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden;
+    min-height: 80px; justify-content: flex-end;
   }
 
-  .setup-label {
-    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-    color: #555; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px;
+  .playlist-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--genre-color, #e8c840); opacity: 0.6; transition: opacity 0.18s;
   }
 
-  .setup-label::after {
-    content: ''; flex: 1; height: 0.5px; background: #2a2a2a;
-  }
+  .playlist-card:hover { border-color: #444; transform: translateY(-1px); }
+  .playlist-card:hover::before { opacity: 1; }
+  .playlist-card.active { border-color: var(--genre-color, #e8c840); background: #161616; }
+  .playlist-card.active::before { opacity: 1; }
 
-  input[type="text"], input[type="password"] {
-    width: 100%; background: #0a0a0a; border: 0.5px solid #2a2a2a;
-    border-radius: 4px; padding: 10px 14px; color: #f0ede6;
-    font-family: 'DM Sans', sans-serif; font-size: 14px;
-    outline: none; transition: border-color 0.2s;
-  }
+  .playlist-emoji { font-size: 22px; line-height: 1; }
+  .playlist-name { font-size: 13px; font-weight: 500; color: #ddd; line-height: 1.2; }
+  .playlist-count { font-size: 10px; color: #555; }
+  .playlist-card.active .playlist-name { color: var(--genre-color, #e8c840); }
 
-  input[type="text"]:focus, input[type="password"]:focus {
-    border-color: #e8c840;
-  }
-
-  .row { display: flex; gap: 1rem; margin-top: 1rem; }
-  .col { flex: 1; }
-  .col label { font-size: 12px; color: #666; margin-bottom: 6px; display: block; }
-
-  .voice-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.5rem;
-  }
-
-  .voice-btn {
-    background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px;
-    padding: 8px 6px; cursor: pointer; text-align: center;
-    transition: all 0.15s; color: #888; font-size: 12px; font-family: 'DM Sans', sans-serif;
-  }
-
-  .voice-btn:hover { border-color: #555; color: #ccc; }
-  .voice-btn.active { border-color: #e8c840; color: #e8c840; background: #1a1700; }
-  .voice-btn .vname { font-weight: 500; display: block; font-size: 13px; color: inherit; }
-  .voice-btn .vdesc { font-size: 10px; color: #555; margin-top: 2px; display: block; }
-  .voice-btn.active .vdesc { color: #a08820; }
-
-  .upload-zone {
-    border: 1px dashed #2a2a2a; border-radius: 6px; padding: 2rem;
-    text-align: center; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
-    position: relative; overflow: hidden;
-  }
-
-  .upload-zone:hover { border-color: #e8c840; background: #0f0f00; }
-  .upload-zone .upload-icon { font-size: 28px; margin-bottom: 8px; color: #444; }
-  .upload-text { font-size: 13px; color: #666; }
-  .upload-text span { color: #e8c840; }
-
-  .track-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 6px; }
-
-  .track-item {
-    background: #0a0a0a; border: 0.5px solid #1e1e1e; border-radius: 4px;
-    padding: 10px 14px; display: flex; align-items: center; gap: 12px;
-    transition: border-color 0.15s; cursor: pointer;
-  }
-
-  .track-item:hover { border-color: #333; }
-  .track-item.playing { border-color: #e8c840; }
-
-  .track-num { font-family: 'Bebas Neue', sans-serif; font-size: 14px; color: #444; min-width: 18px; text-align: center; }
-  .track-info { flex: 1; min-width: 0; }
-  .track-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .track-artist { font-size: 11px; color: #555; }
-  .track-dur { font-size: 11px; color: #444; font-variant-numeric: tabular-nums; }
-  .track-del {
-    background: none; border: none; color: #333; cursor: pointer;
-    font-size: 18px; padding: 2px 6px; line-height: 1; transition: color 0.15s;
-  }
-  .track-del:hover { color: #cc3333; }
-
-  .equalizer {
-    display: flex; align-items: flex-end; gap: 3px; height: 20px;
-  }
-
-  .eq-bar {
-    width: 3px; background: #e8c840; border-radius: 1px;
-    animation: eqAnim 0.4s ease-in-out infinite alternate;
-  }
-  .eq-bar:nth-child(1) { animation-duration: 0.45s; }
-  .eq-bar:nth-child(2) { animation-duration: 0.38s; animation-delay: 0.1s; }
-  .eq-bar:nth-child(3) { animation-duration: 0.52s; animation-delay: 0.05s; }
-  .eq-bar:nth-child(4) { animation-duration: 0.42s; animation-delay: 0.15s; }
-
-  @keyframes eqAnim { from { height: 4px; } to { height: 18px; } }
-
+  /* ── Player Bar ── */
   .player-bar {
     background: #111; border: 0.5px solid #2a2a2a; border-radius: 8px;
     padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
     display: flex; flex-direction: column; gap: 1rem;
   }
 
-  .now-playing-label {
-    font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555;
+  .genre-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--active-color, #e8c840); margin-bottom: 2px;
   }
 
+  .genre-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--active-color, #e8c840); }
+
+  .now-playing-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555; }
   .now-playing-track {
-    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 1px;
-    color: #f0ede6; line-height: 1; margin-top: 2px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 1px;
+    color: #f0ede6; line-height: 1.1; margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-
   .now-playing-artist { font-size: 13px; color: #888; margin-top: 4px; }
 
   .progress-row { display: flex; align-items: center; gap: 10px; }
   .time-label { font-size: 11px; color: #444; min-width: 36px; font-variant-numeric: tabular-nums; }
 
-  input[type="range"].progress {
-    flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
-    background: #222; border-radius: 2px; outline: none; cursor: pointer; border: none; padding: 0;
-  }
-  input[type="range"].progress::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 12px; height: 12px;
-    background: #e8c840; border-radius: 50%; cursor: pointer;
-    box-shadow: 0 0 4px #e8c840;
-  }
+  input[type="range"] { -webkit-appearance: none; appearance: none; background: #222; border-radius: 2px; outline: none; cursor: pointer; border: none; padding: 0; }
+  input[type="range"].progress { flex: 1; height: 4px; }
+  input[type="range"].progress::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #e8c840; border-radius: 50%; cursor: pointer; }
+  input[type="range"].vol { width: 80px; height: 4px; }
+  input[type="range"].vol::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: #666; border-radius: 50%; }
 
-  .controls { display: flex; align-items: center; gap: 1rem; }
-
+  .controls { display: flex; align-items: center; gap: 0.75rem; }
   .ctrl-btn {
-    background: none; border: none; cursor: pointer; color: #888;
-    font-size: 20px; padding: 4px; transition: color 0.15s; line-height: 1;
+    background: none; border: none; cursor: pointer; color: #888; font-size: 22px;
+    padding: 8px; transition: color 0.15s; line-height: 1;
+    min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center;
   }
-  .ctrl-btn:hover { color: #f0ede6; }
-  .ctrl-btn.shuffle-on { color: #e8c840; }
+  .ctrl-btn.active-btn { color: #e8c840; }
 
   .play-btn {
-    width: 48px; height: 48px; border-radius: 50%; background: #e8c840;
+    width: 54px; height: 54px; border-radius: 50%; background: #e8c840;
     border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 20px; color: #0a0a0a; transition: all 0.15s; margin: 0 8px;
+    font-size: 22px; color: #0a0a0a; margin: 0 4px; -webkit-appearance: none;
   }
-  .play-btn:hover { background: #f5d840; transform: scale(1.05); }
-  .play-btn:active { transform: scale(0.97); }
 
-  .vol-row { display: flex; align-items: center; gap: 10px; }
+  .vol-row { display: flex; align-items: center; gap: 8px; }
   .vol-icon { color: #444; font-size: 16px; }
 
-  input[type="range"].vol {
-    width: 80px; height: 3px; -webkit-appearance: none; appearance: none;
-    background: #222; border-radius: 2px; outline: none; cursor: pointer; border: none; padding: 0;
-  }
-  input[type="range"].vol::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 10px; height: 10px;
-    background: #666; border-radius: 50%;
-  }
+  /* ── Track List ── */
+  .tracklist-panel { background: #111; border: 0.5px solid #2a2a2a; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+  .tracklist-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .tracklist-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555; }
+  .tracklist-meta { font-size: 11px; color: #444; }
 
-  .dj-drop-panel {
-    background: #0a0f00; border: 0.5px solid #2a3a0a; border-radius: 8px;
-    padding: 1.25rem 1.5rem; margin-bottom: 2rem;
-  }
+  .track-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+  .track-list::-webkit-scrollbar { width: 3px; }
+  .track-list::-webkit-scrollbar-track { background: #111; }
+  .track-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
 
+  .track-item {
+    background: #0a0a0a; border: 0.5px solid #1a1a1a; border-radius: 4px;
+    padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; transition: border-color 0.15s; min-height: 48px;
+  }
+  .track-item:hover { border-color: #333; }
+  .track-item.playing { border-color: var(--active-color, #e8c840); }
+  .track-num { font-family: 'Bebas Neue', sans-serif; font-size: 13px; color: #444; min-width: 20px; text-align: center; }
+  .track-info { flex: 1; min-width: 0; }
+  .track-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-artist { font-size: 11px; color: #555; margin-top: 1px; }
+  .track-dur { font-size: 11px; color: #444; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .empty-state { text-align: center; padding: 2rem; color: #444; font-size: 13px; line-height: 1.6; }
+
+  /* ── DJ Panel ── */
+  .dj-panel { background: #0a0f00; border: 0.5px solid #2a3a0a; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
   .dj-status { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
-
-  .dj-indicator {
-    width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0;
-    transition: background 0.3s;
-  }
-  .dj-indicator.active {
-    background: #88cc00; box-shadow: 0 0 6px #88cc00;
-    animation: blink 1s ease-in-out infinite;
-  }
+  .dj-indicator { width: 8px; height: 8px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0; }
+  .dj-indicator.active { background: #88cc00; animation: blink 1s ease-in-out infinite; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .dj-label { font-size: 12px; color: #556633; letter-spacing: 1px; }
-  .dj-text { font-size: 14px; color: #aac040; line-height: 1.5; font-style: italic; min-height: 44px; }
+  .dj-label { font-size: 12px; color: #556633; letter-spacing: 1px; flex: 1; }
+  .dj-drop-type { font-size: 10px; color: #445522; letter-spacing: 1px; text-transform: uppercase; }
+  .dj-text { font-size: 14px; color: #aac040; line-height: 1.6; font-style: italic; min-height: 48px; }
   .dj-text.idle { color: #445522; font-style: normal; font-size: 13px; }
 
-  .action-row { display: flex; gap: 10px; margin-top: 1rem; }
-
+  .dj-controls { display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap; }
   .btn-primary {
     flex: 1; background: #e8c840; border: none; border-radius: 4px;
-    padding: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
-    color: #0a0a0a; cursor: pointer; letter-spacing: 0.5px; transition: all 0.15s;
+    padding: 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500;
+    color: #0a0a0a; cursor: pointer; min-height: 48px; -webkit-appearance: none;
   }
-  .btn-primary:hover { background: #f5d840; }
-  .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
-
+  .btn-primary:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
   .btn-secondary {
-    background: none; border: 0.5px solid #2a2a2a; border-radius: 4px;
-    padding: 12px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px;
-    color: #888; cursor: pointer; transition: all 0.15s;
+    background: none; border: 0.5px solid #2a3a0a; border-radius: 4px;
+    padding: 14px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: #556633; cursor: pointer; min-height: 48px; -webkit-appearance: none; white-space: nowrap;
   }
-  .btn-secondary:hover { border-color: #555; color: #ccc; }
 
-  .api-status {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 11px; margin-left: auto;
+  /* ── Settings Panel ── */
+  .settings-panel { background: #111; border: 0.5px solid #2a2a2a; border-radius: 8px; padding: 1.25rem 1.5rem; margin-bottom: 2rem; }
+  .settings-label { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #555; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .settings-label::after { content: ''; flex: 1; height: 0.5px; background: #2a2a2a; }
+  .settings-content { display: none; }
+  .settings-content.open { display: block; }
+  .row { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 130px; }
+  .col label { font-size: 12px; color: #666; margin-bottom: 6px; display: block; }
+  input[type="text"], input[type="password"] {
+    width: 100%; background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px;
+    padding: 10px 14px; color: #f0ede6; font-family: 'DM Sans', sans-serif; font-size: 16px;
+    outline: none; transition: border-color 0.2s; -webkit-appearance: none;
   }
-  .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; }
+  input[type="text"]:focus, input[type="password"]:focus { border-color: #e8c840; }
+  .voice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.5rem; }
+  .voice-btn {
+    background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px;
+    padding: 10px 6px; cursor: pointer; text-align: center; color: #888;
+    font-family: 'DM Sans', sans-serif; -webkit-appearance: none; min-height: 48px;
+  }
+  .voice-btn.active { border-color: #e8c840; color: #e8c840; background: #1a1700; }
+  .voice-btn .vname { font-weight: 500; display: block; font-size: 13px; color: inherit; }
+  .voice-btn .vdesc { font-size: 10px; color: #555; margin-top: 2px; display: block; }
+  .voice-btn.active .vdesc { color: #a08820; }
+  .api-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0; }
   .api-dot.ok { background: #88cc00; }
   .api-dot.err { background: #cc4444; }
 
+  /* ── Equalizer ── */
+  .equalizer { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
+  .eq-bar { width: 3px; background: #e8c840; border-radius: 1px; animation: eqAnim 0.4s ease-in-out infinite alternate; }
+  .eq-bar:nth-child(1){animation-duration:0.45s}
+  .eq-bar:nth-child(2){animation-duration:0.38s;animation-delay:0.1s}
+  .eq-bar:nth-child(3){animation-duration:0.52s;animation-delay:0.05s}
+  .eq-bar:nth-child(4){animation-duration:0.42s;animation-delay:0.15s}
+  @keyframes eqAnim { from{height:4px} to{height:18px} }
+
+  /* ── Toast ── */
   .toast {
-    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px);
-    background: #e8c840; color: #0a0a0a; padding: 10px 20px; border-radius: 4px;
-    font-size: 13px; font-weight: 500; z-index: 999;
-    transition: transform 0.3s ease; pointer-events: none;
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(120px);
+    background: #e8c840; color: #0a0a0a; padding: 12px 24px; border-radius: 24px;
+    font-size: 14px; font-weight: 500; z-index: 999; transition: transform 0.3s ease;
+    pointer-events: none; white-space: nowrap;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
-  .empty-state {
-    text-align: center; padding: 2rem; color: #444; font-size: 13px;
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .container { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
   }
 
   audio { display: none; }
 </style>
 </head>
 <body>
-
 <div class="scanline"></div>
-<audio id="audioPlayer"></audio>
+<audio id="audioPlayer" playsinline preload="none"></audio>
 
 <div class="container">
 
+  <!-- Header -->
   <div class="station-header">
-    <div class="station-name" id="stationDisplay">Non Stop House</div>
-    <div class="station-tag">Your Personal Radio Station</div>
+    <div class="station-name" id="stationDisplay">RADIO X</div>
+    <div class="station-tag" id="stationTagDisplay">Your Personal Station</div>
   </div>
   <div class="freq-bar"></div>
 
-  <!-- Station Setup -->
-  <div class="setup-panel">
-    <div class="setup-label">Station Setup</div>
-    <div class="row" style="margin-top:0;">
-      <div class="col">
-        <label>Station Name</label>
-        <input type="text" id="stationName" placeholder="e.g. RADIO X, HOT 97, WAVY FM" value="Non Stop House">
-      </div>
-      <div class="col">
-        <label>DJ Name</label>
-        <input type="text" id="djName" placeholder="e.g. DJ Phantom, Big Mike">
-      </div>
-    </div>
-    <div class="row">
-      <div class="col">
-        <label>ElevenLabs API Key</label>
-        <input type="password" id="apiKey" placeholder="sk_...">
-      </div>
-      <div class="col" style="display:flex; align-items:flex-end; gap:10px; padding-bottom:2px;">
-        <button class="btn-secondary" style="flex:1" onclick="testApiKey()">Test Key</button>
-        <span class="api-status">
-          <span class="api-dot" id="apiDot"></span>
-          <span id="apiStatusText" style="color:#444">Not tested</span>
-        </span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Voice Selection -->
-  <div class="setup-panel">
-    <div class="setup-label">DJ Voice</div>
-    <div class="voice-grid" id="voiceGrid">
-      <button class="voice-btn active" data-id="pNInz6obpgDQGcFmaJgB" onclick="selectVoice(this)">
-        <span class="vname">Adam</span><span class="vdesc">Deep & Hype</span>
-      </button>
-      <button class="voice-btn" data-id="ErXwobaYiN019PkySvjV" onclick="selectVoice(this)">
-        <span class="vname">Antoni</span><span class="vdesc">Smooth & Clear</span>
-      </button>
-      <button class="voice-btn" data-id="VR6AewLTigWG4xSOukaG" onclick="selectVoice(this)">
-        <span class="vname">Arnold</span><span class="vdesc">Powerful & Bold</span>
-      </button>
-      <button class="voice-btn" data-id="EXAVITQu4vr4xnSDxMaL" onclick="selectVoice(this)">
-        <span class="vname">Bella</span><span class="vdesc">Energetic & Fun</span>
-      </button>
-      <button class="voice-btn" data-id="MF3mGyEYCl7XYWbV9V6O" onclick="selectVoice(this)">
-        <span class="vname">Elli</span><span class="vdesc">Young & Spunky</span>
-      </button>
-      <button class="voice-btn" data-id="TxGEqnHWrfWFTfGW9XjX" onclick="selectVoice(this)">
-        <span class="vname">Josh</span><span class="vdesc">Warm & Casual</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Track Upload -->
-  <div class="setup-panel">
-    <div class="setup-label">Your Tracks</div>
-    <div class="upload-zone"
-      id="uploadZone"
-      onclick="document.getElementById('fileInput').click()"
-      ondragover="handleDragOver(event)"
-      ondragleave="handleDragLeave(event)"
-      ondrop="handleDrop(event)">
-      <input type="file" id="fileInput" accept="audio/*" multiple style="display:none" onchange="handleFiles(this.files)">
-      <div class="upload-icon"><i class="ti ti-music-plus" aria-hidden="true"></i></div>
-      <div class="upload-text">Drop MP3s here or <span>browse files</span></div>
-      <div style="font-size:11px;color:#333;margin-top:6px;">Tip: Name files as "Artist - Title.mp3" for best results</div>
-    </div>
-    <div class="track-list" id="trackList">
-      <div class="empty-state">No tracks yet — add some music above</div>
-    </div>
+  <!-- Playlist Grid -->
+  <div class="playlist-section">
+    <div class="playlist-label">Choose Your Vibe</div>
+    <div class="playlist-grid" id="playlistGrid"></div>
   </div>
 
   <!-- Player -->
   <div class="player-bar">
     <div>
+      <div class="genre-badge" id="genreBadge" style="display:none">
+        <div class="genre-dot"></div>
+        <span id="genreBadgeText"></span>
+      </div>
       <div class="now-playing-label">Now Playing</div>
-      <div class="now-playing-track" id="nowPlayingTitle">— NOTHING LOADED —</div>
-      <div class="now-playing-artist" id="nowPlayingArtist">Add tracks and hit play</div>
+      <div class="now-playing-track" id="nowPlayingTitle">— SELECT A PLAYLIST —</div>
+      <div class="now-playing-artist" id="nowPlayingArtist">Pick a vibe above and hit Start Station</div>
     </div>
     <div class="progress-row">
       <span class="time-label" id="currentTime">0:00</span>
-      <input type="range" class="progress" id="progressBar" min="0" max="100" value="0" step="0.1" oninput="seekTo(this.value)">
+      <input type="range" class="progress" id="progressBar" min="0" max="100" value="0" step="0.1"
+        onchange="seekTo(this.value)" oninput="seekTo(this.value)">
       <span class="time-label" id="totalTime" style="text-align:right">0:00</span>
     </div>
-    <div style="display:flex; align-items:center; justify-content:space-between;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
       <div class="controls">
-        <button class="ctrl-btn" id="shuffleBtn" title="Shuffle" onclick="toggleShuffle()">
-          <i class="ti ti-arrows-shuffle" aria-hidden="true"></i>
+        <button class="ctrl-btn" id="shuffleBtn" onclick="toggleShuffle()" title="Shuffle">
+          <i class="ti ti-arrows-shuffle"></i>
         </button>
         <button class="ctrl-btn" onclick="prevTrack()" title="Previous">
-          <i class="ti ti-player-skip-back" aria-hidden="true"></i>
+          <i class="ti ti-player-skip-back"></i>
         </button>
         <button class="play-btn" id="playBtn" onclick="togglePlay()" aria-label="Play/Pause">
-          <i class="ti ti-player-play" aria-hidden="true" id="playIcon"></i>
+          <i class="ti ti-player-play" id="playIcon"></i>
         </button>
         <button class="ctrl-btn" onclick="nextTrack(false)" title="Next">
-          <i class="ti ti-player-skip-forward" aria-hidden="true"></i>
+          <i class="ti ti-player-skip-forward"></i>
         </button>
-        <div class="equalizer" id="equalizer" style="display:none" aria-hidden="true">
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
-          <div class="eq-bar"></div>
+        <div class="equalizer" id="equalizer" style="display:none">
+          <div class="eq-bar"></div><div class="eq-bar"></div>
+          <div class="eq-bar"></div><div class="eq-bar"></div>
         </div>
       </div>
       <div class="vol-row">
-        <i class="ti ti-volume vol-icon" aria-hidden="true"></i>
-        <input type="range" class="vol" id="volSlider" min="0" max="100" value="80" step="1" oninput="setVolume(this.value)" aria-label="Volume">
+        <i class="ti ti-volume vol-icon"></i>
+        <input type="range" class="vol" id="volSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
       </div>
     </div>
   </div>
 
-  <!-- DJ Drop Panel -->
-  <div class="dj-drop-panel">
+  <!-- Track List -->
+  <div class="tracklist-panel">
+    <div class="tracklist-header">
+      <div class="tracklist-title" id="tracklistTitle">Playlist</div>
+      <div class="tracklist-meta" id="tracklistMeta"></div>
+    </div>
+    <div class="track-list" id="trackList">
+      <div class="empty-state">Select a playlist above to see tracks</div>
+    </div>
+  </div>
+
+  <!-- DJ Panel -->
+  <div class="dj-panel">
     <div class="dj-status">
       <div class="dj-indicator" id="djIndicator"></div>
       <div class="dj-label" id="djLabel">DJ OFFLINE</div>
+      <div class="dj-drop-type" id="djDropType"></div>
     </div>
     <div class="dj-text idle" id="djText">
-      Set up your API key and add some tracks to get started. The DJ will announce songs between tracks automatically.
+      Select a playlist and start the station. Your DJ will do transitions, hype drops, shoutouts, and time-aware comments automatically.
     </div>
-    <div class="action-row">
+    <div class="dj-controls">
       <button class="btn-primary" id="startBtn" onclick="startStation()" disabled>Start Station</button>
-      <button class="btn-secondary" onclick="requestDrop()">DJ Drop</button>
+      <button class="btn-secondary" onclick="requestDrop('transition')">Transition</button>
+      <button class="btn-secondary" onclick="requestDrop('hype')">Hype Drop</button>
+      <button class="btn-secondary" onclick="requestDrop('funny')">Funny</button>
+    </div>
+  </div>
+
+  <!-- Settings (collapsible) -->
+  <div class="settings-panel">
+    <div class="settings-label" onclick="toggleSettings()">
+      ⚙ DJ Settings <span id="settingsArrow" style="margin-left:auto;color:#444;font-size:12px;">▼ expand</span>
+    </div>
+    <div class="settings-content" id="settingsContent">
+      <div class="row" style="margin-top:0;">
+        <div class="col">
+          <label>Station Name</label>
+          <input type="text" id="stationName" placeholder="e.g. RADIO X" value="RADIO X" autocomplete="off">
+        </div>
+        <div class="col">
+          <label>DJ Name</label>
+          <input type="text" id="djName" placeholder="e.g. DJ Phantom" autocomplete="off">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>ElevenLabs API Key</label>
+          <input type="password" id="apiKey" placeholder="sk_..." autocomplete="off" autocorrect="off" autocapitalize="none">
+        </div>
+      </div>
+      <div class="api-row">
+        <button class="btn-secondary" style="flex:1" onclick="testApiKey()">Test Key</button>
+        <span class="api-dot" id="apiDot"></span>
+        <span id="apiStatusText" style="font-size:11px;color:#444">Not tested</span>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <label style="font-size:12px;color:#666;display:block;margin-bottom:8px;">DJ Voice</label>
+        <div class="voice-grid">
+          <button class="voice-btn active" data-id="pNInz6obpgDQGcFmaJgB" onclick="selectVoice(this)">
+            <span class="vname">Adam</span><span class="vdesc">Deep & Hype</span>
+          </button>
+          <button class="voice-btn" data-id="ErXwobaYiN019PkySvjV" onclick="selectVoice(this)">
+            <span class="vname">Antoni</span><span class="vdesc">Smooth & Clear</span>
+          </button>
+          <button class="voice-btn" data-id="VR6AewLTigWG4xSOukaG" onclick="selectVoice(this)">
+            <span class="vname">Arnold</span><span class="vdesc">Powerful & Bold</span>
+          </button>
+          <button class="voice-btn" data-id="EXAVITQu4vr4xnSDxMaL" onclick="selectVoice(this)">
+            <span class="vname">Bella</span><span class="vdesc">Energetic & Fun</span>
+          </button>
+          <button class="voice-btn" data-id="MF3mGyEYCl7XYWbV9V6O" onclick="selectVoice(this)">
+            <span class="vname">Elli</span><span class="vdesc">Young & Spunky</span>
+          </button>
+          <button class="voice-btn" data-id="TxGEqnHWrfWFTfGW9XjX" onclick="selectVoice(this)">
+            <span class="vname">Josh</span><span class="vdesc">Warm & Casual</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -408,360 +370,989 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-  const audio = document.getElementById('audioPlayer');
-  let tracks = [];
-  let currentIndex = 0;
-  let isPlaying = false;
-  let isShuffle = false;
-  let selectedVoice = 'pNInz6obpgDQGcFmaJgB';
-  let djActive = false;
-  let isSpeaking = false;
+// ═══════════════════════════════════════════════════════
+//  PLAYLIST CONFIGURATION
+//  Add your song filenames here. Files must be uploaded
+//  to your GitHub repo root. Format: "Artist - Title.mp3"
+// ═══════════════════════════════════════════════════════
+const PLAYLISTS = {
+  "House Mix": {
+    emoji: "🏠",
+    color: "#e8c840",
+    vibe: "house",
+    songs: [
+      { file: "Music/House Mix/BL3SS, CamrinWatsin, bbyclose - Kisses (feat. bbyclose).mp3" },
+      { file: "Music/House Mix/BOVSKI - Low Again.mp3" },
+      { file: "Music/House Mix/Black Eyed Peas - Rock That Body.mp3" },
+      { file: "Music/House Mix/Calvin Harris, Ellie Goulding - Miracle (with Ellie Goulding).mp3" },
+      { file: "Music/House Mix/Charli xcx - Vroom Vroom.mp3" },
+      { file: "Music/House Mix/Chrystal, NOTION - The Days - NOTION Remix.mp3" },
+      { file: "Music/House Mix/Cloonee, Funkdoobiest - X-Rated.mp3" },
+      { file: "Music/House Mix/Fred again.., Baby Keem - leavemealone.mp3" },
+      { file: "Music/House Mix/Fred again.., Skrillex, Four Tet - Baby again...mp3" },
+      { file: "Music/House Mix/Gravagerz, kiki wera - Pool - Gravagerz Version.mp3" },
+      { file: "Music/House Mix/Harry Styles - Aperture.mp3" },
+      { file: "Music/House Mix/IN PARALLEL, Ely Oaks - NOW IT'S GONE - ELY OAKS REMIX.mp3" },
+      { file: "Music/House Mix/Ian Asher, Phantogram - Black Out Days (Stay Away).mp3" },
+      { file: "Music/House Mix/La Roux, GAMPER & DADONI - Bulletproof.mp3" },
+      { file: "Music/House Mix/Morgan Seatree, Florence + The Machine - Say My Name - Remix.mp3" },
+      { file: "Music/House Mix/Nia Archives - Forbidden Feelingz.mp3" },
+      { file: "Music/House Mix/Nosi - So Good.mp3" },
+      { file: "Music/House Mix/Riton, Kah-Lo, GEE LEE - Fake ID (Coke & Rum Remix).mp3" },
+      { file: "Music/House Mix/Sean Paul, Odd Mob - Get Busy - Odd Mob Club Mix.mp3" },
+      { file: "Music/House Mix/Skrillex, Fred again.., Flowdan - Rumble.mp3" },
+      { file: "Music/House Mix/Ti?sto, A Boogie Wit da Hoodie - Chills (LA Hills).mp3" },
+      { file: "Music/House Mix/Timmy Trumpet, Savage - Freaks.mp3" },
+    ]
+  },
+  "Hip Hop Classics": {
+    emoji: "🎤",
+    color: "#ff6b35",
+    vibe: "hiphop_classic",
+    songs: [
+      { file: "Music/Hip Hop Classics/DANGERDOOM, MF DOOM, Danger Mouse, CeeLo Green - Benzi Box.mp3" },
+      { file: "Music/Hip Hop Classics/Joey Valence & Brae - PUNK TACTICS.mp3" },
+      { file: "Music/Hip Hop Classics/MF DOOM - One Beer.mp3" },
+      { file: "Music/Hip Hop Classics/MF DOOM - THAT'S THAT.mp3" },
+      { file: "Music/Hip Hop Classics/Nas - N.Y. State of Mind.mp3" },
+      { file: "Music/Hip Hop Classics/Wu-Tang Clan - Protect Ya Neck.mp3" },
+    ]
+  },
+  "Hip Hop": {
+    emoji: "🔥",
+    color: "#ff3366",
+    vibe: "hiphop",
+    songs: [
+      { file: "Music/Hip Hop/A$AP Rocky, J. Cole - Ruby Rosary (feat. J. Cole).mp3" },
+      { file: "Music/Hip Hop/Aaron May - Dreams.mp3" },
+      { file: "Music/Hip Hop/Aaron May - HIDDEN VOICES.mp3" },
+      { file: "Music/Hip Hop/Aaron May - Let Go.mp3" },
+      { file: "Music/Hip Hop/Aaron May - MayBack.mp3" },
+      { file: "Music/Hip Hop/Aaron May - No Recognition.mp3" },
+      { file: "Music/Hip Hop/Aaron May - Ride.mp3" },
+      { file: "Music/Hip Hop/Bas, A$AP Ferg - Boca Raton (with A$AP Ferg).mp3" },
+      { file: "Music/Hip Hop/Benny The Butcher, J. Cole - Johnny P's Caddy.mp3" },
+      { file: "Music/Hip Hop/BigXthaPlug - The Largest.mp3" },
+      { file: "Music/Hip Hop/Blvck Svm - tarragonbutter.mp3" },
+      { file: "Music/Hip Hop/Chance the Rapper, Joey Bada$$ - The Highs & The Lows.mp3" },
+      { file: "Music/Hip Hop/Cordae, Anderson .Paak - RNP (feat. Anderson .Paak).mp3" },
+      { file: "Music/Hip Hop/Cordae, Lil Wayne - Saturday Mornings (feat. Lil Wayne).mp3" },
+      { file: "Music/Hip Hop/DC THE DON - STELLA ROSE.mp3" },
+      { file: "Music/Hip Hop/DC3 - I KNOW..mp3" },
+      { file: "Music/Hip Hop/DaBaby - Can't Keep Keisha.mp3" },
+      { file: "Music/Hip Hop/DaBaby - PHAT.mp3" },
+      { file: "Music/Hip Hop/Doechii - Spookie Coochie.mp3" },
+      { file: "Music/Hip Hop/EARTHGANG, JID, J. Cole - WATERBOYZ (with JID & J. Cole).mp3" },
+      { file: "Music/Hip Hop/EARTHGANG, Spillage Village, Benji. - BOBBY BOUCHER (feat. Benji.).mp3" },
+      { file: "Music/Hip Hop/Earl Sweatshirt, The Alchemist - Vin Skully.mp3" },
+      { file: "Music/Hip Hop/Free Party - Distant.mp3" },
+      { file: "Music/Hip Hop/Free Party - Gratuity.mp3" },
+      { file: "Music/Hip Hop/Free Party - Helly's & Foams.mp3" },
+      { file: "Music/Hip Hop/Free Party - Sandbox.mp3" },
+      { file: "Music/Hip Hop/Future, Metro Boomin, J. Cole - Red Leather.mp3" },
+      { file: "Music/Hip Hop/Future, Metro Boomin, The Weeknd - Young Metro.mp3" },
+      { file: "Music/Hip Hop/Future, Metro Boomin, Travis Scott - Cinderella.mp3" },
+      { file: "Music/Hip Hop/Future, Metro Boomin, Travis Scott, Playboi Carti - Type Shit.mp3" },
+      { file: "Music/Hip Hop/IDK - KiCKIN.mp3" },
+      { file: "Music/Hip Hop/IDK, Joey Bada$$ - DENiM (B).mp3" },
+      { file: "Music/Hip Hop/IDK, Joey Valence & Brae - CLOVER.mp3" },
+      { file: "Music/Hip Hop/Isaiah Rashad - RIP Young.mp3" },
+      { file: "Music/Hip Hop/Isaiah Rashad - Smile.mp3" },
+      { file: "Music/Hip Hop/J. Cole - 39 Intro.mp3" },
+      { file: "Music/Hip Hop/J. Cole - 4 Your Eyez Only.mp3" },
+      { file: "Music/Hip Hop/J. Cole - A Tale Of 2 Citiez.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Ain't That Some Shit - Interlude.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Album of the Year - Freestyle.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Apparently.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Bombs in the VilleHit the Gas.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Drum n Bass.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Fire Squad.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Foldin Clothes.mp3" },
+      { file: "Music/Hip Hop/J. Cole - For Whom The Bell Tolls.mp3" },
+      { file: "Music/Hip Hop/J. Cole - G.O.M.D.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Hello.mp3" },
+      { file: "Music/Hip Hop/J. Cole - I Love Her Again.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Immortal.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Intro.mp3" },
+      { file: "Music/Hip Hop/J. Cole - January 28th.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Keep Heaven Dancing.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Life Sentence.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Lonely at the Top (Bonus).mp3" },
+      { file: "Music/Hip Hop/J. Cole - Man Up Above.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Miss America.mp3" },
+      { file: "Music/Hip Hop/J. Cole - No Role Modelz.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Ocean Way (Bonus).mp3" },
+      { file: "Music/Hip Hop/J. Cole - Poor Thang.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Port Antonio.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Quik Stop.mp3" },
+      { file: "Music/Hip Hop/J. Cole - SAFETY.mp3" },
+      { file: "Music/Hip Hop/J. Cole - She's Mine Pt. 1.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Sideline Story.mp3" },
+      { file: "Music/Hip Hop/J. Cole - St. Tropez.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Stickz N Stonez.mp3" },
+      { file: "Music/Hip Hop/J. Cole - The Fall-Off is Inevitable.mp3" },
+      { file: "Music/Hip Hop/J. Cole - The Let Out.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Trae The Truth in Ibiza.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Two Six.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Ville Mentality.mp3" },
+      { file: "Music/Hip Hop/J. Cole - WHO TF IZ U.mp3" },
+      { file: "Music/Hip Hop/J. Cole - Winter Wonderland.mp3" },
+      { file: "Music/Hip Hop/J. Cole - World Is Empty.mp3" },
+      { file: "Music/Hip Hop/J. Cole - and the whole world is the Ville.mp3" },
+      { file: "Music/Hip Hop/J. Cole - cLOUDs.mp3" },
+      { file: "Music/Hip Hop/J. Cole, Bas - Stealth Mode (feat. Bas).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Bas, 6LACK - l e t . g o . m y . h a n d (with Bas & 6LACK).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Burna Boy - Only You (with Burna Boy).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Cam'ron - Ready ?24 (feat. Cam?ron).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Dreamville - Folgers Crystals.mp3" },
+      { file: "Music/Hip Hop/J. Cole, Erykah Badu - The Villest (with Erykah Badu).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Future - Run A Train (with Future).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Future, Tems - Bunce Road Blues (with Future & Tems).mp3" },
+      { file: "Music/Hip Hop/J. Cole, Morray - What If (with Morray).mp3" },
+      { file: "Music/Hip Hop/J. Cole, PJ - Legacy (with PJ).mp3" },
+      { file: "Music/Hip Hop/JA?-Z, J. Cole - A Star Is Born.mp3" },
+      { file: "Music/Hip Hop/JID - Hasta Luego - Bonus.mp3" },
+      { file: "Music/Hip Hop/JID - Off Da Zoinkys.mp3" },
+      { file: "Music/Hip Hop/JID - Somebody.mp3" },
+      { file: "Music/Hip Hop/JID - Workin Out.mp3" },
+      { file: "Music/Hip Hop/JID, Kenny Mason, Lil Wayne - Just In Time (feat. Lil Wayne & Kenny Mason).mp3" },
+      { file: "Music/Hip Hop/Jaxon Mune - Tension.mp3" },
+      { file: "Music/Hip Hop/Jay Rock, SZA - Redemption (feat. SZA).mp3" },
+      { file: "Music/Hip Hop/Joey Bada$$ - Paper Trail$.mp3" },
+      { file: "Music/Hip Hop/Joey Bada$$ - Pardon Me.mp3" },
+      { file: "Music/Hip Hop/Joey Bada$$ - Sorry Not Sorry.mp3" },
+      { file: "Music/Hip Hop/Joey Bada$$ - The Ruler's Back.mp3" },
+      { file: "Music/Hip Hop/Joey Bada$$, J. Cole - LEGENDARY.mp3" },
+      { file: "Music/Hip Hop/Joey Valence & Brae - BUSSIT.mp3" },
+      { file: "Music/Hip Hop/Joey Valence & Brae - OK.mp3" },
+      { file: "Music/Hip Hop/Jordan Cortez - NOT TODAY.mp3" },
+      { file: "Music/Hip Hop/Jordan Cortez - conflicted.mp3" },
+      { file: "Music/Hip Hop/Juice WRLD - World Tour (Aquafina).mp3" },
+      { file: "Music/Hip Hop/Juice WRLD, Young Thug - Lightyears (with Young Thug).mp3" },
+      { file: "Music/Hip Hop/Kendrick Lamar - untitled 08 09.06.2014..mp3" },
+      { file: "Music/Hip Hop/Kendrick Lamar, Dom Kennedy, Murs - She Needs Me (Remix).mp3" },
+      { file: "Music/Hip Hop/Kota the Friend - For Troubled Boys.mp3" },
+      { file: "Music/Hip Hop/Kota the Friend, Joey Bada$$, Bas - B.Q.E.mp3" },
+      { file: "Music/Hip Hop/Kota the Friend, Statik Selektah, Logic - BLAH.mp3" },
+      { file: "Music/Hip Hop/Lil Wayne, Kendrick Lamar - Mona Lisa (feat. Kendrick Lamar).mp3" },
+      { file: "Music/Hip Hop/Logic - Run It.mp3" },
+      { file: "Music/Hip Hop/Macklemore - HIND'S HALL.mp3" },
+      { file: "Music/Hip Hop/Malz Monday - Mother Nature.mp3" },
+      { file: "Music/Hip Hop/Marlon Craft - World Champ.mp3" },
+      { file: "Music/Hip Hop/Miguel, J. Cole - All I Want Is You (feat. J. Cole).mp3" },
+      { file: "Music/Hip Hop/Mike WiLL Made-It, J. Cole - OFG!.mp3" },
+      { file: "Music/Hip Hop/Mustard, Lil Yachty, BlueBucksClan, 42 Dugg - Up Now (feat. Lil Yachty, BlueBucksClan & 42 Dugg).mp3" },
+      { file: "Music/Hip Hop/Mustard, Travis Scott - Parking Lot.mp3" },
+      { file: "Music/Hip Hop/Mustard, Vince Staples, ScHoolboy Q - Pressured Up (feat. Vince Staples & ScHoolboy Q).mp3" },
+      { file: "Music/Hip Hop/Offset, JID - Bodies.mp3" },
+      { file: "Music/Hip Hop/Outkast - Da Art of Storytellin' (Pt. 1).mp3" },
+      { file: "Music/Hip Hop/Powers Pleasant, Saba, Joey Bada$$ - Ball Alone (feat. Joey Bada$$ & Saba).mp3" },
+      { file: "Music/Hip Hop/REASON, Bas - Not What You Think.mp3" },
+      { file: "Music/Hip Hop/Saba - LIFE.mp3" },
+      { file: "Music/Hip Hop/Saba - PROMKING.mp3" },
+      { file: "Music/Hip Hop/ScHoolboy Q - Yeern 101.mp3" },
+      { file: "Music/Hip Hop/Ski Mask The Slump God - Catch Me Outside 2.mp3" },
+      { file: "Music/Hip Hop/Smino, JID, Kenny Beats - Baguetti (with JID & Kenny Beats).mp3" },
+      { file: "Music/Hip Hop/The Alchemist, Action Bronson - The Hopeless Romantic (feat. Action Bronson).mp3" },
+      { file: "Music/Hip Hop/Wale, J. Cole - The Pessimist (feat. J. Cole).mp3" },
+      { file: "Music/Hip Hop/Wale, Melanie Fiona, J. Cole - Beautiful Bliss.mp3" },
+      { file: "Music/Hip Hop/Wu-Tang Clan - Wu-Tang Clan Ain't Nuthing ta F' Wit.mp3" },
+      { file: "Music/Hip Hop/XXXTENTACION, Kemba, Joey Bada$$ - Daemons (feat. Joey Bada$$).mp3" },
+      { file: "Music/Hip Hop/femdot. - 94 Camry Music.mp3" },
+      { file: "Music/Hip Hop/jev. - WINGS IN THE SKY..mp3" },
+      { file: "Music/Hip Hop/jev. - black samuarai..mp3" },
+      { file: "Music/Hip Hop/jev. - lonrwrld (freestyle).mp3" },
+    ]
+  },
+  "Late Night r&B": {
+    emoji: "🌙",
+    color: "#9b59b6",
+    vibe: "rnb",
+    songs: [
+      { file: "Music/Late Night r&B/Daniel Caesar - CYANIDE.mp3" },
+      { file: "Music/Late Night r&B/Daniel Caesar - Hold Me Down.mp3" },
+      { file: "Music/Late Night r&B/Daniel Caesar - Japanese Denim.mp3" },
+      { file: "Music/Late Night r&B/Daniel Caesar - Superpowers.mp3" },
+      { file: "Music/Late Night r&B/Daniel Caesar, Kali Uchis - Get You (feat. Kali Uchis).mp3" },
+      { file: "Music/Late Night r&B/Doechii, SZA - Persuasive (with SZA).mp3" },
+      { file: "Music/Late Night r&B/Earl Sweatshirt, Frank Ocean - Sunday (feat. Frank Ocean).mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Chanel.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Forrest Gump.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Godspeed.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Ivy.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Nights.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Nikes.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Novacane.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Pink + White.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Pretty Sweet.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Provider.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Pyramids.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Seigfried.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Self Control.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - Sweet Life.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean - White Ferrari.mp3" },
+      { file: "Music/Late Night r&B/Frank Ocean, JA?-Z, Tyler, The Creator - Biking.mp3" },
+      { file: "Music/Late Night r&B/GIV?ON - Stuck On You.mp3" },
+      { file: "Music/Late Night r&B/Jack Harlow - Tranquility.mp3" },
+      { file: "Music/Late Night r&B/Mac Miller - Come Back to Earth.mp3" },
+      { file: "Music/Late Night r&B/Masego - Navajo.mp3" },
+      { file: "Music/Late Night r&B/Montell Fish - Talk 2 Me.mp3" },
+      { file: "Music/Late Night r&B/Tommy Richman - WHITNEY.mp3" },
+    ]
+  },
+  "2000s": {
+    emoji: "📼",
+    color: "#00b4d8",
+    vibe: "2000s",
+    songs: [
+      { file: "Music/2000s/50 Cent, Olivia - Candy Shop.mp3" },
+      { file: "Music/2000s/Black Eyed Peas - Imma Be.mp3" },
+      { file: "Music/2000s/Black Eyed Peas - Let's Get It Started - Spike Mix.mp3" },
+      { file: "Music/2000s/Black Eyed Peas - My Humps.mp3" },
+      { file: "Music/2000s/Black Eyed Peas - Pump It.mp3" },
+      { file: "Music/2000s/Flo Rida, T-Pain - Low (feat. T-Pain).mp3" },
+      { file: "Music/2000s/Justin Timberlake - Rock Your Body.mp3" },
+      { file: "Music/2000s/Justin Timberlake, Timbaland - SexyBack (feat. Timbaland).mp3" },
+      { file: "Music/2000s/Katy Perry - Last Friday Night (T.G.I.F.).mp3" },
+      { file: "Music/2000s/Kesha - TiK ToK.mp3" },
+      { file: "Music/2000s/Macklemore & Ryan Lewis, Macklemore, Ryan Lewis, Wanz - Thrift Shop (feat. Wanz).mp3" },
+      { file: "Music/2000s/Nelly - Hot In Herre.mp3" },
+      { file: "Music/2000s/Pitbull, Kesha - Timber.mp3" },
+      { file: "Music/2000s/Rihanna - Breakin' Dishes.mp3" },
+      { file: "Music/2000s/Rihanna - Only Girl (In The World).mp3" },
+      { file: "Music/2000s/Sean Paul - Get Busy.mp3" },
+    ]
+  },
+  "Indie": {
+    emoji: "🎸",
+    color: "#2ecc71",
+    vibe: "indie",
+    songs: [
+      { file: "Music/Indie/Abhi The Nomad, Foster Cazz - Floors.mp3" },
+      { file: "Music/Indie/Arlie - big fat mouth.mp3" },
+      { file: "Music/Indie/B?RNS - Electric Love.mp3" },
+      { file: "Music/Indie/Bakar - 1st Time.mp3" },
+      { file: "Music/Indie/Bakar - Hell N Back.mp3" },
+      { file: "Music/Indie/Briston Maroney - June.mp3" },
+      { file: "Music/Indie/Briston Maroney - Small Talk.mp3" },
+      { file: "Music/Indie/Briston Maroney - Under My Skin.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Cigarette Daydreams.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Come A Little Closer.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Good Time.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Halo.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Spiderhead.mp3" },
+      { file: "Music/Indie/Cage The Elephant - Trouble.mp3" },
+      { file: "Music/Indie/Childish Gambino - Lithonia.mp3" },
+      { file: "Music/Indie/Colony House - You Know It.mp3" },
+      { file: "Music/Indie/Dayglow - Can I Call You Tonight.mp3" },
+      { file: "Music/Indie/Dayglow - Hot Rod.mp3" },
+      { file: "Music/Indie/Dayglow - Run the World!!!.mp3" },
+      { file: "Music/Indie/Declan McKenna - Brazil.mp3" },
+      { file: "Music/Indie/Dominic Fike - Babydoll.mp3" },
+      { file: "Music/Indie/Dominic Fike - How Much Is Weed.mp3" },
+      { file: "Music/Indie/Dominic Fike - She Wants My Money.mp3" },
+      { file: "Music/Indie/Fitz and The Tantrums - Out of My League.mp3" },
+      { file: "Music/Indie/GROUPLOVE - Raspberry.mp3" },
+      { file: "Music/Indie/GROUPLOVE - Tongue Tied.mp3" },
+      { file: "Music/Indie/Goth Babe - Weekend Friend.mp3" },
+      { file: "Music/Indie/HARBOUR - Get You High.mp3" },
+      { file: "Music/Indie/HOAX - into the blackhole.mp3" },
+      { file: "Music/Indie/Hippo Campus - Buttercup.mp3" },
+      { file: "Music/Indie/Hippo Campus - South.mp3" },
+      { file: "Music/Indie/Hippo Campus - Way It Goes.mp3" },
+      { file: "Music/Indie/Hotel Ugly - Shut up My Moms Calling.mp3" },
+      { file: "Music/Indie/Kevin Abstract - Peach.mp3" },
+      { file: "Music/Indie/Lime Cordiale - Robbery.mp3" },
+      { file: "Music/Indie/MGMT - Electric Feel.mp3" },
+      { file: "Music/Indie/Mac Miller - Donald Trump.mp3" },
+      { file: "Music/Indie/Mac Miller - Knock Knock.mp3" },
+      { file: "Music/Indie/Mac Miller - Party On Fifth Ave..mp3" },
+      { file: "Music/Indie/Mac Miller, Empire Of The Sun - The Spins.mp3" },
+      { file: "Music/Indie/Mac Miller, Kendrick Lamar, Iman Omari - Fight the Feeling (feat. Kendrick Lamar & Iman Omari).mp3" },
+      { file: "Music/Indie/Nathaniel Luke - Daylily.mp3" },
+      { file: "Music/Indie/Noah Kahan, Hozier - Northern Attitude (with Hozier).mp3" },
+      { file: "Music/Indie/Omen, Dreamville, Donnie Trumpet - 48 Laws.mp3" },
+      { file: "Music/Indie/Rainbow Kitten Surprise - It's Called- Freefall.mp3" },
+      { file: "Music/Indie/Saint Motel - For Elise.mp3" },
+      { file: "Music/Indie/Saint Motel - Sweet Talk.mp3" },
+      { file: "Music/Indie/Soundgarden - Black Hole Sun.mp3" },
+      { file: "Music/Indie/Still Woozy - Cooks.mp3" },
+      { file: "Music/Indie/Still Woozy - Goodie Bag.mp3" },
+      { file: "Music/Indie/Still Woozy - Habit.mp3" },
+      { file: "Music/Indie/THE DRIVER ERA - Low.mp3" },
+      { file: "Music/Indie/The Backseat Lovers - Kilby Girl.mp3" },
+      { file: "Music/Indie/The Lumineers - Where The Skies Are Blue.mp3" },
+      { file: "Music/Indie/Vista Kicks - Marceline.mp3" },
+      { file: "Music/Indie/Wallows, Clairo - Are You Bored Yet (feat. Clairo).mp3" },
+      { file: "Music/Indie/Young Mister - Anybody Out There.mp3" },
+      { file: "Music/Indie/Your Neighbors - Chicken.mp3" },
+      { file: "Music/Indie/alt-J - Left Hand Free - Extended Version.mp3" },
+    ]
+  },
+  "Country": {
+    emoji: "🤠",
+    color: "#e67e22",
+    vibe: "country",
+    songs: [
+      { file: "Music/Country/Chris Stapleton - Midnight Train To Memphis.mp3" },
+      { file: "Music/Country/Colter Wall - Kate McCannon.mp3" },
+      { file: "Music/Country/Colter Wall - Sleeping on the Blacktop.mp3" },
+      { file: "Music/Country/Colter Wall - The Devil Wears a Suit and Tie.mp3" },
+      { file: "Music/Country/Edward Sharpe & The Magnetic Zeros - Home.mp3" },
+      { file: "Music/Country/Evan Honer, Julia DiGrazia - Jersey Giant.mp3" },
+      { file: "Music/Country/Jon Bellion, Luke Combs - WHY (feat. Luke Combs).mp3" },
+      { file: "Music/Country/KALEO - Broken Bones.mp3" },
+      { file: "Music/Country/KIRBY - The Man.mp3" },
+      { file: "Music/Country/Leon Bridges - River.mp3" },
+      { file: "Music/Country/Miles Caton, Sinners Movie - I Lied to You (Radio Edit).mp3" },
+      { file: "Music/Country/Shaboozey - A Bar Song (Tipsy).mp3" },
+      { file: "Music/Country/Tanya Tucker - Delta Dawn.mp3" },
+      { file: "Music/Country/Tyler Childers - Feathered Indians.mp3" },
+      { file: "Music/Country/Tyler Childers, OurVinyl - Nose On The Grindstone (OurVinyl Sessions).mp3" },
+      { file: "Music/Country/Uncle Lucius - Keep The Wolves Away.mp3" },
+      { file: "Music/Country/Whiskey Myers - Broken Window Serenade.mp3" },
+      { file: "Music/Country/Zach Bryan - Appetite.mp3" },
+      { file: "Music/Country/Zach Bryan - Bad News.mp3" },
+      { file: "Music/Country/Zach Bryan - Blue Jean Baby.mp3" },
+      { file: "Music/Country/Zach Bryan - Burn, Burn, Burn.mp3" },
+      { file: "Music/Country/Zach Bryan - Condemned.mp3" },
+      { file: "Music/Country/Zach Bryan - DeAnn's Denim.mp3" },
+      { file: "Music/Country/Zach Bryan - Dry Deserts.mp3" },
+      { file: "Music/Country/Zach Bryan - East Side of Sorrow.mp3" },
+      { file: "Music/Country/Zach Bryan - Fifth of May.mp3" },
+      { file: "Music/Country/Zach Bryan - God Speed.mp3" },
+      { file: "Music/Country/Zach Bryan - Heading South.mp3" },
+      { file: "Music/Country/Zach Bryan - If They Come Lookin'.mp3" },
+      { file: "Music/Country/Zach Bryan - Nine Ball.mp3" },
+      { file: "Music/Country/Zach Bryan - Oklahoma Smokeshow.mp3" },
+      { file: "Music/Country/Zach Bryan - Open the Gate.mp3" },
+      { file: "Music/Country/Zach Bryan - Overtime.mp3" },
+      { file: "Music/Country/Zach Bryan - Pink Skies.mp3" },
+      { file: "Music/Country/Zach Bryan - Plastic Cigarette.mp3" },
+      { file: "Music/Country/Zach Bryan - Quittin' Time.mp3" },
+      { file: "Music/Country/Zach Bryan - Revival.mp3" },
+      { file: "Music/Country/Zach Bryan - Rivers and Creeks.mp3" },
+      { file: "Music/Country/Zach Bryan - Runny Eggs.mp3" },
+      { file: "Music/Country/Zach Bryan - Santa Fe.mp3" },
+      { file: "Music/Country/Zach Bryan - Say Why.mp3" },
+      { file: "Music/Country/Zach Bryan - Skin.mp3" },
+      { file: "Music/Country/Zach Bryan - Slicked Back.mp3" },
+      { file: "Music/Country/Zach Bryan - Something in the Orange.mp3" },
+      { file: "Music/Country/Zach Bryan - Summertime Blues.mp3" },
+      { file: "Music/Country/Zach Bryan - With Heaven On Top.mp3" },
+      { file: "Music/Country/Zach Bryan, Kacey Musgraves - I Remember Everything (feat. Kacey Musgraves).mp3" },
+      { file: "Music/Country/Zach Bryan, Maggie Rogers - Dawns (feat. Maggie Rogers).mp3" },
+      { file: "Music/Country/Zach Bryan, The War And Treaty - Hey Driver (feat. The War and Treaty).mp3" },
+    ]
+  },
+};
 
-  // ── Toast ──────────────────────────────────────────────
-  function toast(msg, dur = 2500) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), dur);
-  }
+// ═══════════════════════════════════════════════════════
+//  DJ COMMENT BANKS — Genre-aware, time-aware, GTA-style
+// ═══════════════════════════════════════════════════════
+const DJ_COMMENTS = {
 
-  // ── Station Name ───────────────────────────────────────
-  document.getElementById('stationName').addEventListener('input', function () {
-    document.getElementById('stationDisplay').textContent = this.value.toUpperCase() || 'RADIO X';
+  transitions: {
+    house: [
+      "THAT was {prev} by {prevArtist} keeping the floor ALIVE — only on {station}! Coming up, {next} by {nextArtist}, do NOT sit down!",
+      "You just heard {prev} — I dare you to tell me you weren't moving. I DARE you. {station} keeps rolling with {next} by {nextArtist}!",
+      "That was {prev} by {prevArtist} — certified floor filler, certified banger, certified CLASSIC. I'm {dj}, and {next} is coming at you RIGHT NOW!",
+    ],
+    hiphop: [
+      "That was {prev} by {prevArtist} — if you didn't know the words, we need to talk. {station} keeps it moving with {next} by {nextArtist}!",
+      "{prev} by {prevArtist} — BARS. ACTUAL BARS. I'm {dj} and I respect the craft. Up next — {next} by {nextArtist}, stay locked!",
+      "You just vibed out to {prev} by {prevArtist}. No debates. No discussions. Pure heat. {station} coming at you with {next}!",
+    ],
+    hiphop_classic: [
+      "That right there was {prev} by {prevArtist} — a CLASSIC. A monument. A cultural moment. {station} pays respect and keeps moving with {next} by {nextArtist}!",
+      "{prev} by {prevArtist}. If you were alive when that dropped, you remember EXACTLY where you were. I'm {dj}, and we're keeping history alive with {next}!",
+      "They don't make them like {prev} anymore, and that is NOT a debate, that is a FACT. {station}, staying classic with {next} by {nextArtist}!",
+    ],
+    rnb: [
+      "Ohhh, {prev} by {prevArtist}... that song has healed relationships AND ended them. I'm {dj}, and we're keeping the mood going with {next} by {nextArtist} — stay smooth.",
+      "That was {prev} by {prevArtist}. If you're not texting someone right now, what are you DOING? {station}, late night vibes only, coming at you with {next}.",
+      "{prev} by {prevArtist}... I had to take a moment. I literally had to collect myself. {station} keeps the feeling going with {next} by {nextArtist}.",
+    ],
+    "2000s": [
+      "That was {prev} by {prevArtist} — and yes, you DID know every single word. Don't lie. I'm {dj} and {station} is throwing it all the way back with {next}!",
+      "{prev} by {prevArtist} — that song DEFINED a generation. YOUR generation. {station}, the nostalgia never stops, next up is {next} by {nextArtist}!",
+      "If {prev} by {prevArtist} came on at a party right now, the floor would clear and then IMMEDIATELY fill up again. You know I'm right. Coming up — {next}!",
+    ],
+    indie: [
+      "That was {prev} by {prevArtist} — understated, beautiful, and probably playing in a coffee shop somewhere RIGHT NOW. {station} keeps it indie with {next} by {nextArtist}.",
+      "{prev} by {prevArtist}. I feel things when that plays. Unspecified things. Big things. Anyway, I'm {dj} and we've got {next} coming up on {station}.",
+      "You just heard {prev} by {prevArtist} — if you found that on a playlist called 'driving at 2am' you get it. {station}, keeping it real with {next} by {nextArtist}.",
+    ],
+    country: [
+      "That was {prev} by {prevArtist} — grab your boots, grab your hat, we are NOT slowing down on {station}! Coming up, {next} by {nextArtist}!",
+      "{prev} by {prevArtist}. I don't know what it is about country music but it makes me want to drive somewhere with no GPS and figure it out. I'm {dj}, up next is {next}!",
+      "You just heard {prev} by {prevArtist} — pure American soul right there. {station} keeps the twang going with {next} by {nextArtist}. Don't go anywhere.",
+    ],
+  },
+
+  hype: {
+    house: [
+      "WE. ARE. NOT. STOPPING. {station}, the only station that physically cannot slow down!",
+      "I just looked at the clock and it does NOT matter what time it is — this is house music, time is IRRELEVANT!",
+      "If you are sitting down right now I am personally offended. This is {station}. STAND UP.",
+      "The DJ booth is on fire. Figuratively. Mostly. {station} keeps it GOING!",
+    ],
+    hiphop: [
+      "BARS. ONLY BARS. No filler, no fluff, just straight HEAT on {station}!",
+      "I need everybody to turn this up RIGHT NOW. Your neighbors need to hear this. This is a public service.",
+      "We are running the rap game on {station} and we are NOT taking any days off!",
+      "If you skipped this station for anything else today, I feel sorry for you. I genuinely do.",
+    ],
+    hiphop_classic: [
+      "THIS IS HISTORY. You are listening to HISTORY on {station}. Appreciate it.",
+      "They said this sound would die out. LOOK AT US NOW. {station}, keeping legends alive!",
+      "I want everyone to stop what they're doing and just appreciate the fact that this music EXISTS.",
+    ],
+    rnb: [
+      "Late night. Good music. {station}. That is the entire formula and it works EVERY time.",
+      "I don't make the rules. The rules are: smooth music, good vibes, {station}. That's it.",
+      "Whoever hurt you — that's between you and them. But {station} is gonna help you heal. You're welcome.",
+    ],
+    "2000s": [
+      "TIME MACHINE. ACTIVATED. {station} is taking you BACK and you cannot stop us!",
+      "This era of music was built different and I will DIE on this hill. {station}, the 2000s never ended here!",
+      "Low rise jeans, flip phones, and BANGERS. That was the 2000s. We live here now.",
+    ],
+    indie: [
+      "Alternative radio, but make it actually good. That's {station}. You're welcome.",
+      "We are NOT mainstream and we are PROUD of it. {station}, keeping it real since day one.",
+      "This music has feelings in it. Real ones. {station}, where every song means something.",
+    ],
+    country: [
+      "BOOTS AND BANGERS BABY! {station} is country all day every day and we love it!",
+      "This is the kind of music you blast with the windows down. DO IT. Roll the windows down RIGHT NOW.",
+      "Country music is storytelling. {station} tells the best stories. Let's RIDE.",
+    ],
+  },
+
+  funny: [
+    "I tried to describe this station to my mom. She said it sounded like noise. She's not invited.",
+    "Fun fact: studies show that people who listen to {station} are 40% more fun at parties. I made that up but it feels true.",
+    "I once played the wrong song by accident and just kept talking until no one noticed. Professional.",
+    "Someone texted in asking if we take requests. We do not. But we appreciate the confidence.",
+    "I have been the DJ here for a while now and I still don't know how the mixing board works. It's going great.",
+    "They told me to be professional. I said define professional. They hung up. I'm still here.",
+    "Real talk — if this station had a dress code it would be pajamas only. Comfortable. Chaotic. Perfect.",
+    "My therapist said I should find a healthy outlet. So I started talking to strangers on the radio. This is fine.",
+    "We don't take breaks on {station}. Breaks are for people who aren't having this much fun.",
+    "I had a whole plan for today's show. Then I pressed play and forgot everything. You'll never know what was planned.",
+    "Scientifically speaking, this playlist has zero skips. I'm not a scientist. But I feel confident.",
+    "Someone once said silence is golden. Not on {station}. Silence is a loading screen. We don't do that here.",
+  ],
+
+  shoutouts: [
+    "Big shoutout to everyone listening right now — you have EXCELLENT taste and I respect that.",
+    "This one goes out to whoever is cleaning their room to this. You're doing great. Almost done.",
+    "Shoutout to everyone driving right now — keep your eyes on the road, your ears on {station}.",
+    "To everyone at work listening to this through one earbud pretending to be productive — I see you. I support you.",
+    "Big love to everyone who found {station} — you're not like other people and I mean that as a compliment.",
+    "Shoutout to whoever is cooking right now — whatever you're making smells amazing and I'm not even there.",
+    "This one's for the night owls — it is what it is, {station} has your back.",
+    "To whoever is working out to this right now — you're an animal. A beautiful, disciplined animal.",
+    "Shoutout to the early risers tuning in — you woke up and chose vibes. Respect.",
+    "Big shoutout to everyone who has {station} as their morning alarm. You wake up winning.",
+  ],
+
+  timeOfDay: {
+    morning: [
+      "Good MORNING! It is way too early to be this excited but here we are on {station}!",
+      "You woke up today. That's step one. Step two is {station}. You're already ahead.",
+      "Morning crew checking in on {station} — coffee optional, music mandatory.",
+      "Rise and shine! Or don't shine yet. Just rise. We'll get there together on {station}.",
+    ],
+    afternoon: [
+      "Afternoon check-in from {station} — we are keeping the energy UP through the second half of the day!",
+      "It's the afternoon, which means you've survived the morning. {station} is proud of you.",
+      "Post-lunch slump? Not on {station}. We don't do slumps here.",
+      "Good afternoon! Whatever you're doing right now, it's better with {station} on. Science.",
+    ],
+    evening: [
+      "Evening vibes loading on {station} — the day is winding down but the music is NOT.",
+      "It's evening. You made it through another day. Celebrate with {station}.",
+      "Golden hour check-in from your favorite station — {station}, setting the evening mood right.",
+    ],
+    latenight: [
+      "Late night crew, where are you? {station} is here with you at this questionable hour.",
+      "It is late. It is very late. And {station} is NOT going anywhere. Neither are you apparently.",
+      "The rest of the world is asleep. But not us. {station}, after hours, no rules.",
+      "If you're listening to this at whatever time it is right now — no judgment. Only music. {station}.",
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════════════
+const audio = document.getElementById('audioPlayer');
+let currentPlaylist = null;
+let currentPlaylistKey = null;
+let queue = [];
+let currentIndex = 0;
+let isPlaying = false;
+let isShuffle = true; // default on for radio feel
+let djActive = false;
+let isSpeaking = false;
+let selectedVoice = 'pNInz6obpgDQGcFmaJgB';
+let toastTimer = null;
+let hypTimer = null;
+let audioUnlocked = false;
+
+// iOS audio unlock
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audio.load();
+  audioUnlocked = true;
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('click', unlockAudio);
+}
+document.addEventListener('touchstart', unlockAudio, { passive: true });
+document.addEventListener('click', unlockAudio, { passive: true });
+
+// ── Helpers ────────────────────────────────────────────
+function toast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function formatTime(s) {
+  if (!s || isNaN(s) || s === Infinity) return '0:00';
+  return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function parseMeta(filename) {
+  const clean = filename.replace(/\.[^.]+$/, '');
+  const parts = clean.split(' - ');
+  if (parts.length >= 2) return { artist: parts[0].trim(), title: parts.slice(1).join(' - ').trim() };
+  return { artist: 'Unknown Artist', title: clean };
+}
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 12) return 'morning';
+  if (h >= 12 && h < 18) return 'afternoon';
+  if (h >= 18 && h < 22) return 'evening';
+  return 'latenight';
+}
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ── Station Name ───────────────────────────────────────
+document.getElementById('stationName').addEventListener('input', function() {
+  document.getElementById('stationDisplay').textContent = this.value.toUpperCase() || 'RADIO X';
+});
+
+// ── Settings Toggle ────────────────────────────────────
+function toggleSettings() {
+  const c = document.getElementById('settingsContent');
+  const a = document.getElementById('settingsArrow');
+  const open = c.classList.toggle('open');
+  a.textContent = open ? '▲ collapse' : '▼ expand';
+}
+
+// ── Voice Selection ────────────────────────────────────
+function selectVoice(btn) {
+  document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedVoice = btn.dataset.id;
+}
+
+// ── Build Playlist Grid ────────────────────────────────
+function buildPlaylistGrid() {
+  const grid = document.getElementById('playlistGrid');
+  grid.innerHTML = Object.entries(PLAYLISTS).map(([name, pl]) => `
+    <div class="playlist-card" data-key="${escapeHtml(name)}"
+      style="--genre-color: ${pl.color}"
+      onclick="selectPlaylist('${escapeHtml(name)}')">
+      <div class="playlist-emoji">${pl.emoji}</div>
+      <div class="playlist-name">${escapeHtml(name)}</div>
+      <div class="playlist-count">${pl.songs.length} track${pl.songs.length !== 1 ? 's' : ''}</div>
+    </div>
+  `).join('');
+}
+
+// ── Select Playlist ────────────────────────────────────
+function selectPlaylist(key) {
+  currentPlaylistKey = key;
+  currentPlaylist = PLAYLISTS[key];
+
+  // Update card UI
+  document.querySelectorAll('.playlist-card').forEach(c => c.classList.remove('active'));
+  document.querySelector(`[data-key="${key}"]`).classList.add('active');
+
+  // Set active color CSS var on player
+  document.documentElement.style.setProperty('--active-color', currentPlaylist.color);
+
+  // Build queue
+  queue = currentPlaylist.songs.map((s, i) => {
+    const meta = parseMeta(s.file);
+    return { ...meta, file: s.file, index: i };
   });
 
-  // ── Voice Selection ────────────────────────────────────
-  function selectVoice(btn) {
-    document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedVoice = btn.dataset.id;
-  }
+  currentIndex = 0;
+  isPlaying = false;
+  updatePlayBtn();
+  document.getElementById('equalizer').style.display = 'none';
 
-  // ── Time Formatting ────────────────────────────────────
-  function formatTime(s) {
-    if (isNaN(s) || s === Infinity) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60);
-    return m + ':' + String(sec).padStart(2, '0');
-  }
+  // Update player header
+  document.getElementById('genreBadge').style.display = 'flex';
+  document.getElementById('genreBadgeText').textContent = key.toUpperCase();
 
-  // ── Parse Filename for Artist/Title ───────────────────
-  function parseMeta(filename) {
-    const clean = filename.replace(/\.[^.]+$/, '');
-    const parts = clean.split(' - ');
-    if (parts.length >= 2) {
-      return { artist: parts[0].trim(), title: parts.slice(1).join(' - ').trim() };
-    }
-    return { artist: 'Unknown Artist', title: clean };
-  }
-
-  // ── File Handling ──────────────────────────────────────
-  function handleFiles(files) {
-    Array.from(files).forEach(f => {
-      if (!f.type.startsWith('audio/')) return;
-      const url = URL.createObjectURL(f);
-      const meta = parseMeta(f.name);
-      const track = { url, name: f.name, title: meta.title, artist: meta.artist, duration: 0 };
-      tracks.push(track);
-      const idx = tracks.length - 1;
-      const tmp = new Audio(url);
-      tmp.addEventListener('loadedmetadata', () => {
-        tracks[idx].duration = tmp.duration;
-        renderTracks();
-      });
-    });
-    renderTracks();
-    document.getElementById('startBtn').disabled = tracks.length === 0;
-  }
-
-  // ── Drag & Drop ────────────────────────────────────────
-  function handleDragOver(e) {
-    e.preventDefault();
-    document.getElementById('uploadZone').style.borderColor = '#e8c840';
-    document.getElementById('uploadZone').style.background = '#0f0f00';
-  }
-
-  function handleDragLeave() {
-    document.getElementById('uploadZone').style.borderColor = '#2a2a2a';
-    document.getElementById('uploadZone').style.background = '';
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-    handleDragLeave();
-    handleFiles(e.dataTransfer.files);
-  }
-
-  // ── Render Track List ──────────────────────────────────
-  function renderTracks() {
-    const list = document.getElementById('trackList');
-    if (tracks.length === 0) {
-      list.innerHTML = '<div class="empty-state">No tracks yet — add some music above</div>';
-      return;
-    }
-    list.innerHTML = tracks.map((t, i) => `
-      <div class="track-item ${i === currentIndex && isPlaying ? 'playing' : ''}" onclick="playIndex(${i})">
-        <div class="track-num">${i === currentIndex && isPlaying ? '▶' : i + 1}</div>
-        <div class="track-info">
-          <div class="track-title">${escapeHtml(t.title)}</div>
-          <div class="track-artist">${escapeHtml(t.artist)}</div>
-        </div>
-        <div class="track-dur">${formatTime(t.duration)}</div>
-        <button class="track-del" onclick="event.stopPropagation(); removeTrack(${i})" title="Remove track" aria-label="Remove ${escapeHtml(t.title)}">×</button>
-      </div>
-    `).join('');
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
-
-  function removeTrack(i) {
-    URL.revokeObjectURL(tracks[i].url);
-    tracks.splice(i, 1);
-    if (currentIndex >= tracks.length) currentIndex = Math.max(0, tracks.length - 1);
-    renderTracks();
-    document.getElementById('startBtn').disabled = tracks.length === 0;
-  }
-
-  // ── Playback ───────────────────────────────────────────
-  function playIndex(i) {
-    currentIndex = i;
-    loadAndPlay();
-  }
-
-  async function loadAndPlay() {
-    if (tracks.length === 0) return;
-    const t = tracks[currentIndex];
-    audio.src = t.url;
-    audio.volume = document.getElementById('volSlider').value / 100;
-    try {
-      await audio.play();
-      isPlaying = true;
-      updatePlayBtn();
-      document.getElementById('nowPlayingTitle').textContent = t.title.toUpperCase();
-      document.getElementById('nowPlayingArtist').textContent = t.artist;
-      document.getElementById('equalizer').style.display = 'flex';
-      renderTracks();
-    } catch (e) {
-      console.error('Playback error:', e);
-      toast('Playback failed — check browser permissions');
-    }
-  }
-
-  function togglePlay() {
-    if (tracks.length === 0) { toast('Add some tracks first!'); return; }
-    if (isPlaying) {
-      audio.pause();
-      isPlaying = false;
-      document.getElementById('equalizer').style.display = 'none';
-    } else {
-      if (!audio.src || audio.src === window.location.href) {
-        loadAndPlay(); return;
-      }
-      audio.play();
-      isPlaying = true;
-      document.getElementById('equalizer').style.display = 'flex';
-    }
-    updatePlayBtn();
-    renderTracks();
-  }
-
-  function updatePlayBtn() {
-    document.getElementById('playIcon').className = isPlaying ? 'ti ti-player-pause' : 'ti ti-player-play';
-  }
-
-  function prevTrack() {
-    if (tracks.length === 0) return;
-    currentIndex = (currentIndex - 1 + tracks.length) % tracks.length;
-    loadAndPlay();
-  }
-
-  function nextTrack(fromEnd = false) {
-    if (tracks.length === 0) return;
-    if (isShuffle) {
-      let next;
-      do { next = Math.floor(Math.random() * tracks.length); }
-      while (tracks.length > 1 && next === currentIndex);
-      currentIndex = next;
-    } else {
-      currentIndex = (currentIndex + 1) % tracks.length;
-    }
-    if (fromEnd && djActive) {
-      doDjDrop(true);
-    } else {
-      loadAndPlay();
-    }
-  }
-
-  function toggleShuffle() {
-    isShuffle = !isShuffle;
-    document.getElementById('shuffleBtn').classList.toggle('shuffle-on', isShuffle);
-    toast(isShuffle ? 'Shuffle on 🔀' : 'Shuffle off');
-  }
-
-  // ── Progress & Volume ──────────────────────────────────
-  function seekTo(val) {
-    if (audio.duration && isFinite(audio.duration)) {
-      audio.currentTime = (val / 100) * audio.duration;
-    }
-  }
-
-  function setVolume(val) {
-    audio.volume = val / 100;
-  }
-
-  audio.addEventListener('timeupdate', () => {
-    if (!audio.duration || !isFinite(audio.duration)) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    document.getElementById('progressBar').value = pct.toFixed(1);
-    document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
-    document.getElementById('totalTime').textContent = formatTime(audio.duration);
-  });
-
-  audio.addEventListener('ended', () => {
-    isPlaying = false;
-    updatePlayBtn();
-    document.getElementById('equalizer').style.display = 'none';
-    nextTrack(true);
-  });
-
-  // ── API Key Test ───────────────────────────────────────
-  async function testApiKey() {
-    const key = document.getElementById('apiKey').value.trim();
-    if (!key) { toast('Enter your API key first'); return; }
-    const dot = document.getElementById('apiDot');
-    const txt = document.getElementById('apiStatusText');
-    txt.textContent = 'Testing...'; txt.style.color = '#888';
-    try {
-      const r = await fetch('https://api.elevenlabs.io/v1/voices', {
-        headers: { 'xi-api-key': key }
-      });
-      if (r.ok) {
-        dot.className = 'api-dot ok';
-        txt.textContent = 'Connected'; txt.style.color = '#88cc00';
-        toast('API key works! ✓');
-      } else {
-        dot.className = 'api-dot err';
-        txt.textContent = 'Invalid key'; txt.style.color = '#cc4444';
-        toast('Invalid API key');
-      }
-    } catch (e) {
-      dot.className = 'api-dot err';
-      txt.textContent = 'Network error'; txt.style.color = '#cc4444';
-      toast('Network error — check your connection');
-    }
-  }
-
-  // ── Start Station ──────────────────────────────────────
-  function startStation() {
-    if (tracks.length === 0) { toast('Add tracks first!'); return; }
-    djActive = true;
-    document.getElementById('djIndicator').classList.add('active');
-    document.getElementById('djLabel').textContent = 'DJ LIVE';
-    document.getElementById('startBtn').textContent = '📡 Station Live';
+  if (queue.length > 0) {
+    document.getElementById('nowPlayingTitle').textContent = '— ' + key.toUpperCase() + ' —';
+    document.getElementById('nowPlayingArtist').textContent = queue.length + ' tracks loaded — hit Start Station';
+    document.getElementById('startBtn').disabled = false;
+  } else {
+    document.getElementById('nowPlayingTitle').textContent = '— NO TRACKS —';
+    document.getElementById('nowPlayingArtist').textContent = 'Add song filenames to the playlist config';
     document.getElementById('startBtn').disabled = true;
-    loadAndPlay();
-    toast('Station is LIVE!');
   }
 
-  // ── DJ Script Builder ──────────────────────────────────
-  function buildDropScript(isTransition) {
-    const station = document.getElementById('stationName').value.trim() || 'Radio X';
-    const djName = document.getElementById('djName').value.trim() || 'your DJ';
-    const current = tracks[currentIndex];
-    const prevIdx = (currentIndex - 1 + tracks.length) % tracks.length;
-    const prev = tracks[prevIdx];
+  // Update tag
+  document.getElementById('stationTagDisplay').textContent = currentPlaylist.emoji + ' ' + key;
 
-    const openers = [
-      "YEAAH!", "LET'S GO!", "UH!", "THAT'S WHAT I'M TALKING ABOUT!",
-      "STAY LOCKED IN!", "CAN'T STOP WON'T STOP!", "THIS IS YOUR STATION!",
-      "WE ARE NOT SLOWING DOWN!", "TURN IT UP!"
-    ];
-    const opener = openers[Math.floor(Math.random() * openers.length)];
+  renderTracks();
+  toast(key + ' loaded — ' + queue.length + ' tracks');
+}
 
-    if (isTransition && prev && current && prev !== current) {
-      return `${opener} You just heard ${prev.title} by ${prev.artist} — only on ${station}! ` +
-             `I'm ${djName}, keeping it hot all day! Up next, we're running it with ` +
-             `${current.title} by ${current.artist}! Don't touch that dial — ` +
-             `${station}, the only station that never stops!`;
-    } else if (current) {
-      return `${opener} ${djName} in the building and we are LIVE on ${station}! ` +
-             `You're locked in with ${current.title} by ${current.artist}! ` +
-             `${station} — all day, every day, we never stop the music!`;
+// ── Render Track List ──────────────────────────────────
+function renderTracks() {
+  const list = document.getElementById('trackList');
+  const title = document.getElementById('tracklistTitle');
+  const meta = document.getElementById('tracklistMeta');
+
+  if (!currentPlaylist) {
+    list.innerHTML = '<div class="empty-state">Select a playlist above</div>';
+    return;
+  }
+
+  title.textContent = currentPlaylistKey;
+  meta.textContent = queue.length + ' tracks';
+
+  if (queue.length === 0) {
+    list.innerHTML = `<div class="empty-state">No tracks in this playlist yet.<br>Add filenames to the PLAYLISTS config in the HTML.</div>`;
+    return;
+  }
+
+  list.innerHTML = queue.map((t, i) => `
+    <div class="track-item ${i === currentIndex && isPlaying ? 'playing' : ''}" onclick="playIndex(${i})">
+      <div class="track-num">${i === currentIndex && isPlaying ? '▶' : i + 1}</div>
+      <div class="track-info">
+        <div class="track-title">${escapeHtml(t.title)}</div>
+        <div class="track-artist">${escapeHtml(t.artist)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Playback ───────────────────────────────────────────
+function playIndex(i) {
+  currentIndex = i;
+  doPlay();
+}
+
+function doPlay() {
+  if (queue.length === 0) return;
+  const t = queue[currentIndex];
+  // Songs are served from same directory as index.html (GitHub repo root)
+  audio.src = encodeURIComponent(t.file).replace(/%2F/g, '/');
+  audio.load();
+  const p = audio.play();
+  if (p !== undefined) {
+    p.then(() => {
+      isPlaying = true;
+      updateNowPlaying();
+    }).catch(err => {
+      console.error('Play error:', err);
+      toast('Tap play to start');
+      isPlaying = false;
+      updatePlayBtn();
+    });
+  } else {
+    isPlaying = true;
+    updateNowPlaying();
+  }
+}
+
+function updateNowPlaying() {
+  const t = queue[currentIndex];
+  document.getElementById('nowPlayingTitle').textContent = t.title.toUpperCase();
+  document.getElementById('nowPlayingArtist').textContent = t.artist;
+  document.getElementById('equalizer').style.display = 'flex';
+  audio.volume = document.getElementById('volSlider').value / 100;
+  updatePlayBtn();
+  renderTracks();
+}
+
+function togglePlay() {
+  if (!currentPlaylist || queue.length === 0) { toast('Select a playlist first!'); return; }
+  if (isPlaying) {
+    audio.pause();
+    isPlaying = false;
+    document.getElementById('equalizer').style.display = 'none';
+    updatePlayBtn();
+    renderTracks();
+  } else {
+    if (!audio.src || audio.src === window.location.href) {
+      doPlay();
     } else {
-      return `${opener} ${djName} here, you're listening to ${station}! ` +
-             `The hottest station around — we NEVER stop! Stay locked in!`;
+      const p = audio.play();
+      if (p) p.then(() => { isPlaying = true; document.getElementById('equalizer').style.display = 'flex'; updatePlayBtn(); renderTracks(); }).catch(console.error);
     }
   }
+}
 
-  // ── ElevenLabs DJ Drop ─────────────────────────────────
-  async function doDjDrop(thenPlayNext = false) {
-    if (isSpeaking) { if (thenPlayNext) loadAndPlay(); return; }
-    const key = document.getElementById('apiKey').value.trim();
-    if (!key) { if (thenPlayNext) loadAndPlay(); return; }
+function updatePlayBtn() {
+  document.getElementById('playIcon').className = isPlaying ? 'ti ti-player-pause' : 'ti ti-player-play';
+}
 
-    const script = buildDropScript(thenPlayNext);
-    isSpeaking = true;
-    document.getElementById('djIndicator').classList.add('active');
-    document.getElementById('djText').className = 'dj-text';
-    document.getElementById('djText').textContent = '🎙 ' + script;
+function prevTrack() {
+  if (queue.length === 0) return;
+  currentIndex = (currentIndex - 1 + queue.length) % queue.length;
+  doPlay();
+}
 
-    try {
-      const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`, {
-        method: 'POST',
-        headers: {
-          'xi-api-key': key,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          text: script,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability: 0.35,
-            similarity_boost: 0.8,
-            style: 0.6,
-            use_speaker_boost: true
-          }
-        })
-      });
+function nextTrack(fromEnd = false) {
+  if (queue.length === 0) return;
+  if (isShuffle) {
+    let next;
+    do { next = Math.floor(Math.random() * queue.length); }
+    while (queue.length > 1 && next === currentIndex);
+    currentIndex = next;
+  } else {
+    currentIndex = (currentIndex + 1) % queue.length;
+  }
+  if (fromEnd && djActive) {
+    doDjDrop('transition');
+  } else {
+    doPlay();
+  }
+}
 
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        console.error('ElevenLabs error:', err);
-        isSpeaking = false;
-        if (thenPlayNext) loadAndPlay();
-        return;
-      }
+function toggleShuffle() {
+  isShuffle = !isShuffle;
+  document.getElementById('shuffleBtn').classList.toggle('active-btn', isShuffle);
+  toast(isShuffle ? 'Shuffle on' : 'Shuffle off');
+}
 
-      const blob = await r.blob();
-      const dropUrl = URL.createObjectURL(blob);
-      const dropAudio = new Audio(dropUrl);
-      dropAudio.volume = audio.volume;
-      dropAudio.play();
-      dropAudio.addEventListener('ended', () => {
-        URL.revokeObjectURL(dropUrl);
-        isSpeaking = false;
-        if (thenPlayNext) loadAndPlay();
-      });
-      dropAudio.addEventListener('error', () => {
-        isSpeaking = false;
-        if (thenPlayNext) loadAndPlay();
-      });
-    } catch (e) {
-      console.error('DJ drop error:', e);
-      isSpeaking = false;
-      if (thenPlayNext) loadAndPlay();
+function seekTo(val) {
+  if (audio.duration && isFinite(audio.duration)) audio.currentTime = (val / 100) * audio.duration;
+}
+
+function setVolume(val) { audio.volume = val / 100; }
+
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration || !isFinite(audio.duration)) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressBar').value = pct.toFixed(1);
+  document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
+  document.getElementById('totalTime').textContent = formatTime(audio.duration);
+});
+
+audio.addEventListener('ended', () => {
+  isPlaying = false;
+  updatePlayBtn();
+  document.getElementById('equalizer').style.display = 'none';
+  nextTrack(true);
+});
+
+audio.addEventListener('error', () => {
+  toast('Error loading track — skipping');
+  isPlaying = false;
+  updatePlayBtn();
+});
+
+// ── Start Station ──────────────────────────────────────
+function startStation() {
+  if (!currentPlaylist || queue.length === 0) { toast('Select a playlist first!'); return; }
+  djActive = true;
+  isShuffle = true;
+  document.getElementById('shuffleBtn').classList.add('active-btn');
+  document.getElementById('djIndicator').classList.add('active');
+  document.getElementById('djLabel').textContent = 'DJ LIVE';
+  document.getElementById('startBtn').textContent = 'Station Live';
+  document.getElementById('startBtn').disabled = true;
+  doPlay();
+  scheduleHypeDrop();
+  // Greet with time-aware comment
+  setTimeout(() => requestDrop('timeofday'), 3000);
+  toast('Station is LIVE!');
+}
+
+// Schedule random hype drops mid-song (every 4–8 min)
+function scheduleHypeDrop() {
+  if (!djActive) return;
+  clearTimeout(hypTimer);
+  const delay = (240 + Math.random() * 240) * 1000;
+  hypTimer = setTimeout(() => {
+    if (djActive && isPlaying && !isSpeaking) {
+      requestDrop(Math.random() < 0.5 ? 'hype' : 'funny');
     }
+    scheduleHypeDrop();
+  }, delay);
+}
+
+// ── API Key Test ───────────────────────────────────────
+async function testApiKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { toast('Enter your API key first'); return; }
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiStatusText');
+  txt.textContent = 'Testing...'; txt.style.color = '#888';
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
+    if (r.ok) {
+      dot.className = 'api-dot ok'; txt.textContent = 'Connected'; txt.style.color = '#88cc00';
+      toast('API key works!');
+    } else {
+      dot.className = 'api-dot err'; txt.textContent = 'Invalid'; txt.style.color = '#cc4444';
+      toast('Invalid API key');
+    }
+  } catch(e) {
+    dot.className = 'api-dot err'; txt.textContent = 'Error'; txt.style.color = '#cc4444';
+  }
+}
+
+// ── DJ Script Builder ──────────────────────────────────
+function buildScript(type) {
+  const station = document.getElementById('stationName').value.trim() || 'Radio X';
+  const dj = document.getElementById('djName').value.trim() || 'your DJ';
+  const vibe = currentPlaylist ? currentPlaylist.vibe : 'hiphop';
+  const current = queue[currentIndex];
+  const prevIdx = (currentIndex - 1 + queue.length) % queue.length;
+  const prev = queue[prevIdx];
+
+  function fill(template) {
+    return template
+      .replace(/{station}/g, station)
+      .replace(/{dj}/g, dj)
+      .replace(/{next}/g, current ? current.title : 'the next track')
+      .replace(/{nextArtist}/g, current ? current.artist : '')
+      .replace(/{prev}/g, prev ? prev.title : 'that last track')
+      .replace(/{prevArtist}/g, prev ? prev.artist : '');
   }
 
-  function requestDrop() {
-    const key = document.getElementById('apiKey').value.trim();
-    if (!key) { toast('Add your ElevenLabs key first'); return; }
-    if (tracks.length === 0) { toast('Add some tracks first'); return; }
-    doDjDrop(false);
+  if (type === 'transition') {
+    const bank = DJ_COMMENTS.transitions[vibe] || DJ_COMMENTS.transitions.hiphop;
+    return fill(pick(bank));
   }
+  if (type === 'hype') {
+    const bank = DJ_COMMENTS.hype[vibe] || DJ_COMMENTS.hype.hiphop;
+    return fill(pick(bank));
+  }
+  if (type === 'funny') {
+    return fill(pick(DJ_COMMENTS.funny));
+  }
+  if (type === 'shoutout') {
+    return fill(pick(DJ_COMMENTS.shoutouts));
+  }
+  if (type === 'timeofday') {
+    const tod = getTimeOfDay();
+    return fill(pick(DJ_COMMENTS.timeOfDay[tod]));
+  }
+  return fill(pick(DJ_COMMENTS.funny));
+}
+
+// ── ElevenLabs DJ Drop ─────────────────────────────────
+function requestDrop(type) {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { toast('Add your ElevenLabs key in settings'); return; }
+  if (!currentPlaylist || queue.length === 0) { toast('Select a playlist first'); return; }
+  doDjDrop(type, false);
+}
+
+async function doDjDrop(type, thenPlay = false) {
+  if (isSpeaking) { if (thenPlay) doPlay(); return; }
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { if (thenPlay) doPlay(); return; }
+
+  const script = buildScript(type);
+  isSpeaking = true;
+
+  const typeLabels = { transition: 'TRANSITION', hype: 'HYPE DROP', funny: 'FUNNY', shoutout: 'SHOUTOUT', timeofday: 'TIME CHECK' };
+  document.getElementById('djDropType').textContent = typeLabels[type] || '';
+  document.getElementById('djIndicator').classList.add('active');
+  document.getElementById('djText').className = 'dj-text';
+  document.getElementById('djText').textContent = script;
+
+  try {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: script,
+        model_id: 'eleven_monolingual_v1',
+        voice_settings: { stability: 0.35, similarity_boost: 0.8, style: 0.6, use_speaker_boost: true }
+      })
+    });
+
+    if (!r.ok) { isSpeaking = false; if (thenPlay) doPlay(); return; }
+
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const djAudio = new Audio();
+    djAudio.src = url;
+    djAudio.volume = audio.volume;
+    const p = djAudio.play();
+    if (p) p.catch(e => { console.error(e); isSpeaking = false; URL.revokeObjectURL(url); if (thenPlay) doPlay(); });
+    djAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); isSpeaking = false; if (thenPlay) doPlay(); });
+    djAudio.addEventListener('error', () => { URL.revokeObjectURL(url); isSpeaking = false; if (thenPlay) doPlay(); });
+
+  } catch(e) {
+    console.error('DJ drop error:', e);
+    isSpeaking = false;
+    if (thenPlay) doPlay();
+  }
+}
+
+// Override nextTrack to use proper drop then play flow
+const _origNextTrack = nextTrack;
+
+audio.addEventListener('ended', () => {
+  isPlaying = false;
+  updatePlayBtn();
+  document.getElementById('equalizer').style.display = 'none';
+  // Pick next
+  if (queue.length === 0) return;
+  if (isShuffle) {
+    let next;
+    do { next = Math.floor(Math.random() * queue.length); }
+    while (queue.length > 1 && next === currentIndex);
+    currentIndex = next;
+  } else {
+    currentIndex = (currentIndex + 1) % queue.length;
+  }
+  if (djActive) {
+    // Randomly choose drop type for variety
+    const roll = Math.random();
+    let dropType = 'transition';
+    if (roll < 0.6) dropType = 'transition';
+    else if (roll < 0.75) dropType = 'shoutout';
+    else if (roll < 0.9) dropType = 'funny';
+    else dropType = 'timeofday';
+    doDjDrop(dropType, true);
+  } else {
+    doPlay();
+  }
+}, { once: false });
+
+// ── Init ───────────────────────────────────────────────
+buildPlaylistGrid();
+
+// Default shuffle on
+isShuffle = true;
+document.getElementById('shuffleBtn').classList.add('active-btn');
 </script>
-
 </body>
 </html>
