@@ -218,6 +218,10 @@
   .api-dot.ok { background: #88cc00; }
   .api-dot.err { background: #cc4444; }
 
+  /* ── Audio Visualizer ── */
+  .visualizer-container { width: 100%; height: 80px; margin: 1rem 0; background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px; overflow: hidden; }
+  #audioCanvas { width: 100%; height: 100%; display: block; }
+
   /* ── Equalizer ── */
   .equalizer { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
   .eq-bar { width: 3px; background: #e8c840; border-radius: 1px; animation: eqAnim 0.4s ease-in-out infinite alternate; }
@@ -272,6 +276,9 @@
       <div class="now-playing-label">Now Playing</div>
       <div class="now-playing-track" id="nowPlayingTitle">— SELECT A PLAYLIST —</div>
       <div class="now-playing-artist" id="nowPlayingArtist">Pick a vibe above and hit Start Station</div>
+    </div>
+    <div class="visualizer-container">
+      <canvas id="audioCanvas"></canvas>
     </div>
     <div class="progress-row">
       <span class="time-label" id="currentTime">0:00</span>
@@ -910,6 +917,15 @@ let toastTimer = null;
 let hypeTimer = null;
 let audioUnlocked = false;
 
+// ── Audio Visualizer & Crossfade ─────────────────────────
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let animationId = null;
+let nextAudio = null;
+let crossfadeInProgress = false;
+const CROSSFADE_DURATION = 3000; // 3 seconds
+
 // ── DJ frequency control ───────────────────────────────
 // DJ speaks every N songs. Between those, music plays silently.
 // Adjust DJ_EVERY to change frequency (3 = every 3rd song).
@@ -1263,6 +1279,85 @@ function renderTracks() {
   });
 }
 
+
+// ── Audio Visualizer ──────────────────────────────────
+function initializeVisualizer() {
+  if (audioContext) return; // Already initialized
+  const audioEl = document.getElementById('audioPlayer');
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioContext.createMediaElementAudioSource(audioEl);
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 256;
+  analyser.smoothingTimeConstant = 0.85;
+  source.connect(analyser);
+  analyser.connect(audioContext.destination);
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  startVisualization();
+}
+
+function visualizeAudio() {
+  const canvas = document.getElementById('audioCanvas');
+  if (!canvas || !analyser) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  // Set canvas size to match display size
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  
+  // Get frequency data
+  analyser.getByteFrequencyData(dataArray);
+  
+  // Clear canvas with semi-transparent black for trails effect
+  ctx.fillStyle = 'rgba(15, 15, 35, 0.2)';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  
+  // Draw frequency bars (visualizer style)
+  const binCount = dataArray.length;
+  const barWidth = rect.width / binCount;
+  const gradientHeight = rect.height;
+  
+  ctx.fillStyle = '#00ff88';
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 8;
+  
+  for (let i = 0; i < binCount; i++) {
+    const freq = dataArray[i];
+    const barHeight = (freq / 255) * gradientHeight * 0.8;
+    const x = i * barWidth;
+    const y = gradientHeight - barHeight;
+    
+    // Draw bar with gradient based on frequency
+    const hueRotation = (i / binCount) * 360;
+    ctx.fillStyle = `hsl(${hueRotation}, 100%, 50%)`;
+    ctx.fillRect(x, y, barWidth - 1, barHeight);
+  }
+}
+
+function startVisualization() {
+  if (animationId) cancelAnimationFrame(animationId);
+  function loop() {
+    visualizeAudio();
+    animationId = requestAnimationFrame(loop);
+  }
+  animationId = requestAnimationFrame(loop);
+}
+
+function stopVisualization() {
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+  // Clear canvas
+  const canvas = document.getElementById('audioCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
 // ── Playback ───────────────────────────────────────────
 function playIndex(i) {
   currentIndex = i;
@@ -1275,6 +1370,12 @@ function doPlay() {
   // Use encodeURI so path separators remain intact while spaces and unsafe chars are encoded
   audio.src = encodeURI(t.file);
   audio.load();
+  
+  // Initialize visualizer on first play
+  if (!audioContext) {
+    try { initializeVisualizer(); } catch(e) { console.warn('Visualizer init failed:', e); }
+  }
+  
   const p = audio.play();
   if (p !== undefined) {
     p.then(() => {
@@ -1455,6 +1556,95 @@ async function preloadNextDrop() {
 }
 
 // ── SINGLE ended listener — the only place song transitions happen ──
+
+// ── Crossfade / Auto-mixing ───────────────────────────
+function startCrossfade(nextTrack) {
+  if (crossfadeInProgress) return; // Prevent multiple fades
+  if (!nextTrack || !nextTrack.file) { doPlay(); return; }
+  
+  crossfadeInProgress = true;
+  const currentAudio = audio;
+  const origVolume = currentAudio.volume;
+  const fadeStartTime = Date.now();
+  const fadeDuration = CROSSFADE_DURATION; // Duration in milliseconds
+  
+  // Create and start next audio element
+  nextAudio = new Audio();
+  nextAudio.src = encodeURI(nextTrack.file);
+  nextAudio.loop = false;
+  nextAudio.playsinline = true;
+  nextAudio.volume = 0; // Start silent
+  
+  const playPromise = nextAudio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      console.warn('Crossfade: next track play failed:', err);
+      crossfadeInProgress = false;
+      currentAudio.play().catch(() => {});
+      return;
+    });
+  }
+  
+  // Animate volume fade using RAF
+  function fade() {
+    const elapsed = Date.now() - fadeStartTime;
+    const progress = Math.min(1, elapsed / fadeDuration); // 0 to 1
+    
+    // Smooth easing function (ease-in-out)
+    const easeProgress = progress < 0.5 
+      ? 2 * progress * progress 
+      : -1 + (4 - 2 * progress) * progress;
+    
+    // Fade out current audio, fade in next audio
+    currentAudio.volume = origVolume * (1 - easeProgress);
+    nextAudio.volume = origVolume * easeProgress;
+    
+    if (progress < 1) {
+      requestAnimationFrame(fade);
+    } else {
+      // Fade complete: swap audio references
+      currentAudio.pause();
+      currentAudio.src = '';
+      
+      // Make nextAudio the main audio element
+      const oldAudio = document.getElementById('audioPlayer');
+      oldAudio.parentNode.replaceChild(nextAudio, oldAudio);
+      nextAudio.id = 'audioPlayer';
+      audio = nextAudio;
+      
+      crossfadeInProgress = false;
+      document.getElementById('equalizer').style.display = 'none';
+      
+      if (queue.length === 0) return;
+      
+      // Continue playback flow
+      if (djActive) {
+        songsSinceDrop++;
+        const shouldDrop = (songsSinceDrop >= DJ_EVERY);
+        if (shouldDrop) {
+          songsSinceDrop = 0;
+          if (preloadedDropUrl) {
+            playPreloadedDrop();
+          } else {
+            const roll = Math.random();
+            let dropType;
+            if (roll < 0.55)      dropType = 'transition';
+            else if (roll < 0.72) dropType = 'shoutout';
+            else if (roll < 0.88) dropType = 'funny';
+            else                  dropType = 'timeofday';
+            doDjDrop(dropType, true);
+          }
+        } else {
+          if (preloadedDropUrl) { URL.revokeObjectURL(preloadedDropUrl); preloadedDropUrl = null; preloadedDropType = null; }
+          // Continue playing (nextAudio is already playing)
+        }
+      }
+    }
+  }
+  
+  requestAnimationFrame(fade);
+}
+
 audio.addEventListener('ended', () => {
   isPlaying = false;
   updatePlayBtn();
@@ -1481,12 +1671,22 @@ audio.addEventListener('ended', () => {
         doDjDrop(dropType, true);
       }
     } else {
-      // Clear any stale preload and just play next song silently
+      // Clear any stale preload and just play next song
       if (preloadedDropUrl) { URL.revokeObjectURL(preloadedDropUrl); preloadedDropUrl = null; preloadedDropType = null; }
-      doPlay();
+      // Try crossfade for smooth automatic transitions
+      if (currentIndex + 1 < queue.length) {
+        startCrossfade(queue[currentIndex]);
+      } else {
+        doPlay();
+      }
     }
   } else {
-    doPlay();
+    // Non-DJ mode: try crossfade for smooth transitions
+    if (currentIndex + 1 < queue.length) {
+      startCrossfade(queue[currentIndex]);
+    } else {
+      doPlay();
+    }
   }
 });
 
@@ -1498,6 +1698,11 @@ function playPreloadedDrop() {
   preloadedDropUrl = null;
   preloadedDropType = null;
   isSpeaking = true;
+  
+  // Pause main music while DJ is talking
+  const wasPlaying = !audio.paused;
+  if (wasPlaying) audio.pause();
+  
   const typeLabels = { transition: 'TRANSITION', hype: 'HYPE DROP', funny: 'FUNNY', shoutout: 'SHOUTOUT', timeofday: 'TIME CHECK' };
   document.getElementById('djDropType').textContent = typeLabels[type] || '';
   document.getElementById('djIndicator').classList.add('active');
@@ -1505,9 +1710,9 @@ function playPreloadedDrop() {
   djAudio.src = url;
   djAudio.volume = audio.volume;
   const p = djAudio.play();
-  if (p) p.catch(err => { console.error('Preloaded drop play failed:', err); URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
-  djAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
-  djAudio.addEventListener('error', () => { URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
+  if (p) p.catch(err => { console.error('Preloaded drop play failed:', err); URL.revokeObjectURL(url); isSpeaking = false; if (wasPlaying) doPlay(); });
+  djAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); isSpeaking = false; if (wasPlaying) doPlay(); });
+  djAudio.addEventListener('error', () => { URL.revokeObjectURL(url); isSpeaking = false; if (wasPlaying) doPlay(); });
 }
 
 audio.addEventListener('error', () => {
@@ -1634,6 +1839,10 @@ async function doDjDrop(type, thenPlay = false) {
 
   const script = buildScript(type);
   isSpeaking = true;
+  
+  // Pause main music while DJ is talking
+  const wasPlaying = !audio.paused;
+  if (wasPlaying) audio.pause();
 
   // Update DJ panel UI
   const typeLabels = { transition: 'TRANSITION', hype: 'HYPE DROP', funny: 'FUNNY', shoutout: 'SHOUTOUT', timeofday: 'TIME CHECK' };
@@ -1664,7 +1873,7 @@ async function doDjDrop(type, thenPlay = false) {
       console.error('ElevenLabs error:', r.status, errData);
       toast('DJ error ' + r.status + ' — check API key');
       isSpeaking = false;
-      if (thenPlay) doPlay();
+      if (wasPlaying) doPlay();
       return;
     }
 
@@ -1680,26 +1889,26 @@ async function doDjDrop(type, thenPlay = false) {
         console.error('DJ audio play failed:', err);
         URL.revokeObjectURL(url);
         isSpeaking = false;
-        if (thenPlay) doPlay();
+        if (wasPlaying) doPlay();
       });
     }
 
     djAudio.addEventListener('ended', () => {
       URL.revokeObjectURL(url);
       isSpeaking = false;
-      if (thenPlay) doPlay();
+      if (wasPlaying) doPlay();
     });
 
     djAudio.addEventListener('error', () => {
       URL.revokeObjectURL(url);
       isSpeaking = false;
-      if (thenPlay) doPlay();
+      if (wasPlaying) doPlay();
     });
 
   } catch(e) {
     console.error('DJ drop fetch error:', e);
     isSpeaking = false;
-    if (thenPlay) doPlay();
+    if (wasPlaying) doPlay();
   }
 }
 
