@@ -1342,7 +1342,8 @@ async function doDjDrop(type, thenPlay = false) {
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         text: script,
-        model_id: 'eleven_monolingual_v1',
+        model_id: 'eleven_v3',
+        output_format: 'mp3_44100_128',
         voice_settings: { stability: 0.35, similarity_boost: 0.8, style: 0.6, use_speaker_boost: true }
       })
     });
