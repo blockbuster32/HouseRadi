@@ -29,10 +29,10 @@
   .container { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
 
   .station-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-  .station-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: #9c40e8; line-height: 1; }
+  .station-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: #e8c840; line-height: 1; }
   .station-tag { font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: #888; margin-left: auto; }
 
-  .freq-bar { height: 2px; background: #a840e8; margin-bottom: 2rem; animation: pulse 2s ease-in-out infinite; }
+  .freq-bar { height: 2px; background: #e8c840; margin-bottom: 2rem; animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
   /* ── Playlist Selector ── */
@@ -181,16 +181,38 @@
     outline: none; transition: border-color 0.2s; -webkit-appearance: none;
   }
   input[type="text"]:focus, input[type="password"]:focus { border-color: #e8c840; }
-  .voice-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 0.5rem; }
-  .voice-btn {
-    background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 4px;
-    padding: 10px 6px; cursor: pointer; text-align: center; color: #888;
-    font-family: 'DM Sans', sans-serif; -webkit-appearance: none; min-height: 48px;
+  .voice-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 0.5rem; }
+  @media (min-width: 480px) { .voice-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .voice-card {
+    background: #0a0a0a; border: 0.5px solid #2a2a2a; border-radius: 6px;
+    padding: 10px; cursor: pointer; text-align: left; color: #888;
+    font-family: 'DM Sans', sans-serif; -webkit-appearance: none;
+    transition: border-color 0.15s; position: relative; overflow: hidden;
   }
-  .voice-btn.active { border-color: #e8c840; color: #e8c840; background: #1a1700; }
-  .voice-btn .vname { font-weight: 500; display: block; font-size: 13px; color: inherit; }
-  .voice-btn .vdesc { font-size: 10px; color: #555; margin-top: 2px; display: block; }
-  .voice-btn.active .vdesc { color: #a08820; }
+  .voice-card.active { border-color: #e8c840; background: #1a1700; }
+  .voice-card.active .vname { color: #e8c840; }
+  .voice-card.active .vdesc { color: #a08820; }
+  .voice-card .vname { font-weight: 500; display: block; font-size: 13px; color: #ccc; margin-bottom: 2px; }
+  .voice-card .vcategory { font-size: 10px; color: #555; display: block; margin-bottom: 8px; }
+  .voice-card .vdesc { font-size: 10px; color: #555; display: block; }
+  .voice-preview-btn {
+    display: flex; align-items: center; gap: 4px; margin-top: 8px;
+    background: #1a1a1a; border: 0.5px solid #333; border-radius: 3px;
+    padding: 5px 8px; font-size: 11px; color: #666; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; -webkit-appearance: none;
+    transition: all 0.15s; width: 100%;
+  }
+  .voice-preview-btn:hover { border-color: #555; color: #aaa; }
+  .voice-preview-btn.playing { border-color: #e8c840; color: #e8c840; background: #1a1700; }
+  .voice-preview-btn .preview-icon { font-size: 10px; }
+
+  .voice-loading {
+    text-align: center; padding: 1.5rem; color: #444; font-size: 13px;
+  }
+  .voice-error {
+    text-align: center; padding: 1rem; color: #cc4444; font-size: 12px;
+  }
   .api-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
   .api-dot { width: 6px; height: 6px; border-radius: 50%; background: #3a3a3a; flex-shrink: 0; }
   .api-dot.ok { background: #88cc00; }
@@ -340,26 +362,12 @@
         <span id="apiStatusText" style="font-size:11px;color:#444">Not tested</span>
       </div>
       <div style="margin-top:1.25rem;">
-        <label style="font-size:12px;color:#666;display:block;margin-bottom:8px;">DJ Voice</label>
-        <div class="voice-grid">
-          <button class="voice-btn active" data-id="pNInz6obpgDQGcFmaJgB" onclick="selectVoice(this)">
-            <span class="vname">Adam</span><span class="vdesc">Deep & Hype</span>
-          </button>
-          <button class="voice-btn" data-id="ErXwobaYiN019PkySvjV" onclick="selectVoice(this)">
-            <span class="vname">Antoni</span><span class="vdesc">Smooth & Clear</span>
-          </button>
-          <button class="voice-btn" data-id="VR6AewLTigWG4xSOukaG" onclick="selectVoice(this)">
-            <span class="vname">Arnold</span><span class="vdesc">Powerful & Bold</span>
-          </button>
-          <button class="voice-btn" data-id="EXAVITQu4vr4xnSDxMaL" onclick="selectVoice(this)">
-            <span class="vname">Bella</span><span class="vdesc">Energetic & Fun</span>
-          </button>
-          <button class="voice-btn" data-id="MF3mGyEYCl7XYWbV9V6O" onclick="selectVoice(this)">
-            <span class="vname">Elli</span><span class="vdesc">Young & Spunky</span>
-          </button>
-          <button class="voice-btn" data-id="TxGEqnHWrfWFTfGW9XjX" onclick="selectVoice(this)">
-            <span class="vname">Josh</span><span class="vdesc">Warm & Casual</span>
-          </button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label style="font-size:12px;color:#666;">DJ Voice</label>
+          <button class="btn-secondary" style="padding:6px 12px;font-size:11px;" onclick="loadVoices()">↻ Load Voices</button>
+        </div>
+        <div class="voice-grid" id="voiceGrid">
+          <div class="voice-loading">Enter your API key and tap "Load Voices" to see available voices</div>
         </div>
       </div>
     </div>
@@ -406,7 +414,7 @@ const PLAYLISTS = {
     ]
   },
   "Hip Hop Classics": {
-    emoji: "💿",
+    emoji: "🎤",
     color: "#ff6b35",
     vibe: "hiphop_classic",
     songs: [
@@ -419,7 +427,7 @@ const PLAYLISTS = {
     ]
   },
   "Hip Hop": {
-    emoji: "🎧",
+    emoji: "🔥",
     color: "#ff3366",
     vibe: "hiphop",
     songs: [
@@ -908,6 +916,11 @@ let audioUnlocked = false;
 const DJ_EVERY = 3;
 let songsSinceDrop = 0;
 
+// 25002500 DJ Preload system 25002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500250025002500
+let preloadedDropUrl = null;
+let preloadedDropType = null;
+let preloadTimer = null;
+
 // ── Stored API key — read once so collapsible panel isn't an issue ──
 let storedApiKey = '';
 
@@ -977,12 +990,102 @@ function toggleSettings() {
   a.textContent = open ? '▲ collapse' : '▼ expand';
 }
 
-// ── Voice Selection ────────────────────────────────────
-function selectVoice(btn) {
-  document.querySelectorAll('.voice-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  selectedVoice = btn.dataset.id;
+// ── Voice System ────────────────────────────────────────────────
+let availableVoices = [];
+let previewAudio = null;
+
+async function loadVoices() {
+  const key = getApiKey();
+  if (!key) { toast('Enter your API key first'); return; }
+  const grid = document.getElementById('voiceGrid');
+  grid.innerHTML = '<div class="voice-loading">Loading voices...</div>';
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
+    if (!r.ok) { grid.innerHTML = '<div class="voice-error">Could not load voices — check API key</div>'; return; }
+    const data = await r.json();
+    availableVoices = (data.voices || []).sort((a, b) => {
+      const aCustom = a.category === 'cloned' || a.category === 'generated';
+      const bCustom = b.category === 'cloned' || b.category === 'generated';
+      if (aCustom !== bCustom) return aCustom ? 1 : -1;
+      return a.name.localeCompare(b.name);
+    });
+    renderVoiceGrid();
+    toast(availableVoices.length + ' voices loaded');
+  } catch(e) {
+    grid.innerHTML = '<div class="voice-error">Network error loading voices</div>';
+  }
 }
+
+function renderVoiceGrid() {
+  const grid = document.getElementById('voiceGrid');
+  if (!availableVoices.length) { grid.innerHTML = '<div class="voice-loading">No voices found</div>'; return; }
+  grid.innerHTML = availableVoices.map(v => {
+    const isActive = v.voice_id === selectedVoice;
+    const category = v.category === 'cloned' ? 'Custom' : v.category === 'generated' ? 'Generated' : 'Premade';
+    const gender = (v.labels && v.labels.gender) ? v.labels.gender : '';
+    const accent = (v.labels && v.labels.accent) ? v.labels.accent : '';
+    const desc = [gender, accent].filter(Boolean).join(', ');
+    return `<div class="voice-card ${isActive ? 'active' : ''}" data-id="${v.voice_id}" onclick="selectVoice('${v.voice_id}', this)">
+      <span class="vname">${escapeHtml(v.name)}</span>
+      <span class="vcategory">${category}</span>
+      ${desc ? `<span class="vdesc">${escapeHtml(desc)}</span>` : ''}
+      <button class="voice-preview-btn" id="prev-${v.voice_id}" onclick="event.stopPropagation(); previewVoice('${v.voice_id}')">
+        <span class="preview-icon">▶</span> Preview
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function selectVoice(voiceId, card) {
+  selectedVoice = voiceId;
+  document.querySelectorAll('.voice-card').forEach(c => c.classList.remove('active'));
+  if (card) card.classList.add('active');
+  if (previewAudio) { previewAudio.pause(); previewAudio = null; }
+  resetPreviewBtns();
+  toast('Voice selected — hit Preview to hear it');
+}
+
+function resetPreviewBtns() {
+  document.querySelectorAll('.voice-preview-btn').forEach(b => {
+    b.classList.remove('playing');
+    b.innerHTML = '<span class="preview-icon">▶</span> Preview';
+  });
+}
+
+async function previewVoice(voiceId) {
+  const key = getApiKey();
+  if (!key) { toast('Enter API key first'); return; }
+  if (previewAudio) { previewAudio.pause(); previewAudio = null; resetPreviewBtns(); }
+  const btn = document.getElementById('prev-' + voiceId);
+  if (btn) { btn.classList.add('playing'); btn.innerHTML = '<span class="preview-icon">⏳</span> Loading...'; }
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: "Hey what is up everybody! You are locked in and we are LIVE. Let\'s go!",
+        model_id: 'eleven_v3',
+        output_format: 'mp3_44100_128',
+        voice_settings: { stability: 0.25, similarity_boost: 0.75, style: 0.85, use_speaker_boost: true }
+      })
+    });
+    if (!r.ok) { toast('Preview failed — ' + r.status); if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; } return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    previewAudio = new Audio(url);
+    previewAudio.volume = document.getElementById('volSlider').value / 100;
+    if (btn) btn.innerHTML = '<span class="preview-icon">▶</span> Playing...';
+    previewAudio.play().catch(e => { if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; } });
+    previewAudio.addEventListener('ended', () => {
+      URL.revokeObjectURL(url); previewAudio = null;
+      if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; }
+    });
+  } catch(e) {
+    toast('Preview failed');
+    if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; }
+  }
+}
+
 
 // ── Build Playlist Grid ────────────────────────────────
 function buildPlaylistGrid() {
@@ -1171,7 +1274,89 @@ audio.addEventListener('timeupdate', () => {
   document.getElementById('progressBar').value = pct.toFixed(1);
   document.getElementById('currentTime').textContent = formatTime(audio.currentTime);
   document.getElementById('totalTime').textContent = formatTime(audio.duration);
+
+  // ── Preload next DJ drop 20 seconds before song ends ──
+  if (djActive && !isSpeaking && !preloadedDropUrl && storedApiKey) {
+    const timeLeft = audio.duration - audio.currentTime;
+    const nextSongsSinceDrop = songsSinceDrop + 1;
+    const dropDue = (nextSongsSinceDrop >= DJ_EVERY);
+    if (dropDue && timeLeft <= 20 && timeLeft > 0) {
+      preloadNextDrop();
+    }
+  }
 });
+
+// ── Preload the next DJ drop in the background ─────────────────
+async function preloadNextDrop() {
+  if (preloadedDropUrl) return;
+  const key = getApiKey();
+  if (!key) return;
+
+  const roll = Math.random();
+  let dropType;
+  if (roll < 0.55)      dropType = 'transition';
+  else if (roll < 0.72) dropType = 'shoutout';
+  else if (roll < 0.88) dropType = 'funny';
+  else                  dropType = 'timeofday';
+
+  const peekIndex = (() => {
+    if (!isShuffle) return (currentIndex + 1) % queue.length;
+    let next;
+    do { next = Math.floor(Math.random() * queue.length); }
+    while (queue.length > 1 && next === currentIndex);
+    return next;
+  })();
+
+  const station = document.getElementById('stationName').value.trim() || 'Radio X';
+  const dj = document.getElementById('djName').value.trim() || 'your DJ';
+  const vibe = currentPlaylist ? currentPlaylist.vibe : 'hiphop';
+  const current = queue[currentIndex];
+  const next = queue[peekIndex];
+
+  function fill(template) {
+    return template
+      .replace(/{station}/g, station).replace(/{dj}/g, dj)
+      .replace(/{next}/g, next ? next.title : 'the next track')
+      .replace(/{nextArtist}/g, next ? next.artist : '')
+      .replace(/{prev}/g, current ? current.title : 'that last track')
+      .replace(/{prevArtist}/g, current ? current.artist : '');
+  }
+
+  let script;
+  if (dropType === 'transition') {
+    const bank = DJ_COMMENTS.transitions[vibe] || DJ_COMMENTS.transitions.hiphop;
+    script = fill(pick(bank));
+  } else if (dropType === 'shoutout') {
+    script = fill(pick(DJ_COMMENTS.shoutouts));
+  } else if (dropType === 'funny') {
+    script = fill(pick(DJ_COMMENTS.funny));
+  } else {
+    const tod = getTimeOfDay();
+    script = fill(pick(DJ_COMMENTS.timeOfDay[tod]));
+  }
+
+  try {
+    const r = await fetch(\`https://api.elevenlabs.io/v1/text-to-speech/\${selectedVoice}\`, {
+      method: 'POST',
+      headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: script,
+        model_id: 'eleven_v3',
+        output_format: 'mp3_44100_128',
+        voice_settings: { stability: 0.25, similarity_boost: 0.75, style: 0.85, use_speaker_boost: true }
+      })
+    });
+    if (!r.ok) { console.warn('Preload failed:', r.status); return; }
+    const blob = await r.blob();
+    preloadedDropUrl = URL.createObjectURL(blob);
+    preloadedDropType = dropType;
+    document.getElementById('djText').className = 'dj-text';
+    document.getElementById('djText').textContent = script;
+    console.log('DJ drop preloaded:', dropType);
+  } catch(e) {
+    console.warn('Preload fetch error:', e);
+  }
+}
 
 // ── SINGLE ended listener — the only place song transitions happen ──
 audio.addEventListener('ended', () => {
@@ -1180,29 +1365,54 @@ audio.addEventListener('ended', () => {
   document.getElementById('equalizer').style.display = 'none';
   if (queue.length === 0) return;
 
-  advanceQueue(); // pick the next song index
+  advanceQueue();
 
   if (djActive) {
     songsSinceDrop++;
     const shouldDrop = (songsSinceDrop >= DJ_EVERY);
-
     if (shouldDrop) {
       songsSinceDrop = 0;
-      // Pick drop type with weighted randomness
-      const roll = Math.random();
-      let dropType;
-      if (roll < 0.55)      dropType = 'transition';
-      else if (roll < 0.72) dropType = 'shoutout';
-      else if (roll < 0.88) dropType = 'funny';
-      else                  dropType = 'timeofday';
-      doDjDrop(dropType, true); // DJ speaks, then plays next song
+      if (preloadedDropUrl) {
+        playPreloadedDrop(); // already downloaded — instant, zero dead air
+      } else {
+        // Fallback: song was too short or preload didn't finish in time
+        const roll = Math.random();
+        let dropType;
+        if (roll < 0.55)      dropType = 'transition';
+        else if (roll < 0.72) dropType = 'shoutout';
+        else if (roll < 0.88) dropType = 'funny';
+        else                  dropType = 'timeofday';
+        doDjDrop(dropType, true);
+      }
     } else {
-      doPlay(); // silent transition, just play next song
+      // Clear any stale preload and just play next song silently
+      if (preloadedDropUrl) { URL.revokeObjectURL(preloadedDropUrl); preloadedDropUrl = null; preloadedDropType = null; }
+      doPlay();
     }
   } else {
     doPlay();
   }
 });
+
+// ── Play the preloaded drop instantly ─────────────────────
+function playPreloadedDrop() {
+  if (!preloadedDropUrl) { doPlay(); return; }
+  const url = preloadedDropUrl;
+  const type = preloadedDropType;
+  preloadedDropUrl = null;
+  preloadedDropType = null;
+  isSpeaking = true;
+  const typeLabels = { transition: 'TRANSITION', hype: 'HYPE DROP', funny: 'FUNNY', shoutout: 'SHOUTOUT', timeofday: 'TIME CHECK' };
+  document.getElementById('djDropType').textContent = typeLabels[type] || '';
+  document.getElementById('djIndicator').classList.add('active');
+  const djAudio = new Audio();
+  djAudio.src = url;
+  djAudio.volume = audio.volume;
+  const p = djAudio.play();
+  if (p) p.catch(err => { console.error('Preloaded drop play failed:', err); URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
+  djAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
+  djAudio.addEventListener('error', () => { URL.revokeObjectURL(url); isSpeaking = false; doPlay(); });
+}
 
 audio.addEventListener('error', () => {
   toast('Error loading track — skipping');
@@ -1344,7 +1554,12 @@ async function doDjDrop(type, thenPlay = false) {
         text: script,
         model_id: 'eleven_v3',
         output_format: 'mp3_44100_128',
-        voice_settings: { stability: 0.35, similarity_boost: 0.8, style: 0.6, use_speaker_boost: true }
+        voice_settings: {
+          stability: 0.25,
+          similarity_boost: 0.75,
+          style: 0.85,
+          use_speaker_boost: true
+        }
       })
     });
 
