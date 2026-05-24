@@ -29,10 +29,10 @@
   .container { max-width: 720px; margin: 0 auto; padding: 2rem 1.5rem; position: relative; z-index: 1; }
 
   .station-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
-  .station-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: #e8c840; line-height: 1; }
+  .station-name { font-family: 'Bebas Neue', sans-serif; font-size: 52px; letter-spacing: 2px; color: #9c40e8; line-height: 1; }
   .station-tag { font-size: 11px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; color: #888; margin-left: auto; }
 
-  .freq-bar { height: 2px; background: #e8c840; margin-bottom: 2rem; animation: pulse 2s ease-in-out infinite; }
+  .freq-bar { height: 2px; background: #a840e8; margin-bottom: 2rem; animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 
   /* ── Playlist Selector ── */
@@ -406,7 +406,7 @@ const PLAYLISTS = {
     ]
   },
   "Hip Hop Classics": {
-    emoji: "🎤",
+    emoji: "💿",
     color: "#ff6b35",
     vibe: "hiphop_classic",
     songs: [
@@ -419,7 +419,7 @@ const PLAYLISTS = {
     ]
   },
   "Hip Hop": {
-    emoji: "🔥",
+    emoji: "🎧",
     color: "#ff3366",
     vibe: "hiphop",
     songs: [
@@ -894,15 +894,24 @@ let currentPlaylistKey = null;
 let queue = [];
 let currentIndex = 0;
 let isPlaying = false;
-let isShuffle = true; // default on for radio feel
+let isShuffle = true;
 let djActive = false;
 let isSpeaking = false;
 let selectedVoice = 'pNInz6obpgDQGcFmaJgB';
 let toastTimer = null;
-let hypTimer = null;
+let hypeTimer = null;
 let audioUnlocked = false;
 
-// iOS audio unlock
+// ── DJ frequency control ───────────────────────────────
+// DJ speaks every N songs. Between those, music plays silently.
+// Adjust DJ_EVERY to change frequency (3 = every 3rd song).
+const DJ_EVERY = 3;
+let songsSinceDrop = 0;
+
+// ── Stored API key — read once so collapsible panel isn't an issue ──
+let storedApiKey = '';
+
+// ── iOS audio unlock ───────────────────────────────────
 function unlockAudio() {
   if (audioUnlocked) return;
   audio.load();
@@ -948,6 +957,13 @@ function getTimeOfDay() {
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+function getApiKey() {
+  // Always prefer the live input value, fall back to stored
+  const live = document.getElementById('apiKey').value.trim();
+  if (live) storedApiKey = live;
+  return storedApiKey;
+}
+
 // ── Station Name ───────────────────────────────────────
 document.getElementById('stationName').addEventListener('input', function() {
   document.getElementById('stationDisplay').textContent = this.value.toUpperCase() || 'RADIO X';
@@ -987,14 +1003,10 @@ function selectPlaylist(key) {
   currentPlaylistKey = key;
   currentPlaylist = PLAYLISTS[key];
 
-  // Update card UI
   document.querySelectorAll('.playlist-card').forEach(c => c.classList.remove('active'));
   document.querySelector(`[data-key="${key}"]`).classList.add('active');
-
-  // Set active color CSS var on player
   document.documentElement.style.setProperty('--active-color', currentPlaylist.color);
 
-  // Build queue
   queue = currentPlaylist.songs.map((s, i) => {
     const meta = parseMeta(s.file);
     return { ...meta, file: s.file, index: i };
@@ -1002,10 +1014,9 @@ function selectPlaylist(key) {
 
   currentIndex = 0;
   isPlaying = false;
+  songsSinceDrop = 0;
   updatePlayBtn();
   document.getElementById('equalizer').style.display = 'none';
-
-  // Update player header
   document.getElementById('genreBadge').style.display = 'flex';
   document.getElementById('genreBadgeText').textContent = key.toUpperCase();
 
@@ -1019,9 +1030,7 @@ function selectPlaylist(key) {
     document.getElementById('startBtn').disabled = true;
   }
 
-  // Update tag
   document.getElementById('stationTagDisplay').textContent = currentPlaylist.emoji + ' ' + key;
-
   renderTracks();
   toast(key + ' loaded — ' + queue.length + ' tracks');
 }
@@ -1041,7 +1050,7 @@ function renderTracks() {
   meta.textContent = queue.length + ' tracks';
 
   if (queue.length === 0) {
-    list.innerHTML = `<div class="empty-state">No tracks in this playlist yet.<br>Add filenames to the PLAYLISTS config in the HTML.</div>`;
+    list.innerHTML = `<div class="empty-state">No tracks in this playlist yet.</div>`;
     return;
   }
 
@@ -1065,7 +1074,6 @@ function playIndex(i) {
 function doPlay() {
   if (queue.length === 0) return;
   const t = queue[currentIndex];
-  // Songs are served from same directory as index.html (GitHub repo root)
   audio.src = encodeURIComponent(t.file).replace(/%2F/g, '/');
   audio.load();
   const p = audio.play();
@@ -1108,7 +1116,12 @@ function togglePlay() {
       doPlay();
     } else {
       const p = audio.play();
-      if (p) p.then(() => { isPlaying = true; document.getElementById('equalizer').style.display = 'flex'; updatePlayBtn(); renderTracks(); }).catch(console.error);
+      if (p) p.then(() => {
+        isPlaying = true;
+        document.getElementById('equalizer').style.display = 'flex';
+        updatePlayBtn();
+        renderTracks();
+      }).catch(console.error);
     }
   }
 }
@@ -1123,7 +1136,7 @@ function prevTrack() {
   doPlay();
 }
 
-function nextTrack(fromEnd = false) {
+function advanceQueue() {
   if (queue.length === 0) return;
   if (isShuffle) {
     let next;
@@ -1133,11 +1146,11 @@ function nextTrack(fromEnd = false) {
   } else {
     currentIndex = (currentIndex + 1) % queue.length;
   }
-  if (fromEnd && djActive) {
-    doDjDrop('transition');
-  } else {
-    doPlay();
-  }
+}
+
+function nextTrack() {
+  advanceQueue();
+  doPlay();
 }
 
 function toggleShuffle() {
@@ -1160,53 +1173,80 @@ audio.addEventListener('timeupdate', () => {
   document.getElementById('totalTime').textContent = formatTime(audio.duration);
 });
 
+// ── SINGLE ended listener — the only place song transitions happen ──
 audio.addEventListener('ended', () => {
   isPlaying = false;
   updatePlayBtn();
   document.getElementById('equalizer').style.display = 'none';
-  nextTrack(true);
+  if (queue.length === 0) return;
+
+  advanceQueue(); // pick the next song index
+
+  if (djActive) {
+    songsSinceDrop++;
+    const shouldDrop = (songsSinceDrop >= DJ_EVERY);
+
+    if (shouldDrop) {
+      songsSinceDrop = 0;
+      // Pick drop type with weighted randomness
+      const roll = Math.random();
+      let dropType;
+      if (roll < 0.55)      dropType = 'transition';
+      else if (roll < 0.72) dropType = 'shoutout';
+      else if (roll < 0.88) dropType = 'funny';
+      else                  dropType = 'timeofday';
+      doDjDrop(dropType, true); // DJ speaks, then plays next song
+    } else {
+      doPlay(); // silent transition, just play next song
+    }
+  } else {
+    doPlay();
+  }
 });
 
 audio.addEventListener('error', () => {
   toast('Error loading track — skipping');
   isPlaying = false;
   updatePlayBtn();
+  // Auto-skip after 1.5s on error
+  setTimeout(() => { if (!isPlaying) { advanceQueue(); doPlay(); } }, 1500);
 });
 
 // ── Start Station ──────────────────────────────────────
 function startStation() {
   if (!currentPlaylist || queue.length === 0) { toast('Select a playlist first!'); return; }
+
+  // Grab and store the API key NOW while settings panel is open
+  storedApiKey = document.getElementById('apiKey').value.trim();
+  if (!storedApiKey) {
+    toast('Enter your ElevenLabs API key in settings first');
+    if (!document.getElementById('settingsContent').classList.contains('open')) toggleSettings();
+    return;
+  }
+
   djActive = true;
+  songsSinceDrop = 0;
   isShuffle = true;
   document.getElementById('shuffleBtn').classList.add('active-btn');
   document.getElementById('djIndicator').classList.add('active');
   document.getElementById('djLabel').textContent = 'DJ LIVE';
   document.getElementById('startBtn').textContent = 'Station Live';
   document.getElementById('startBtn').disabled = true;
-  doPlay();
-  scheduleHypeDrop();
-  // Greet with time-aware comment
-  setTimeout(() => requestDrop('timeofday'), 3000);
-  toast('Station is LIVE!');
-}
 
-// Schedule random hype drops mid-song (every 4–8 min)
-function scheduleHypeDrop() {
-  if (!djActive) return;
-  clearTimeout(hypTimer);
-  const delay = (240 + Math.random() * 240) * 1000;
-  hypTimer = setTimeout(() => {
-    if (djActive && isPlaying && !isSpeaking) {
-      requestDrop(Math.random() < 0.5 ? 'hype' : 'funny');
-    }
-    scheduleHypeDrop();
-  }, delay);
+  // Start playing first song
+  doPlay();
+
+  // After 4 seconds, do a time-of-day greeting over the music
+  setTimeout(() => doDjDrop('timeofday', false), 4000);
+
+  toast('Station is LIVE!');
 }
 
 // ── API Key Test ───────────────────────────────────────
 async function testApiKey() {
   const key = document.getElementById('apiKey').value.trim();
   if (!key) { toast('Enter your API key first'); return; }
+  storedApiKey = key; // store it when tested
   const dot = document.getElementById('apiDot');
   const txt = document.getElementById('apiStatusText');
   txt.textContent = 'Testing...'; txt.style.color = '#888';
@@ -1214,13 +1254,14 @@ async function testApiKey() {
     const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
     if (r.ok) {
       dot.className = 'api-dot ok'; txt.textContent = 'Connected'; txt.style.color = '#88cc00';
-      toast('API key works!');
+      toast('API key works! ✓');
     } else {
       dot.className = 'api-dot err'; txt.textContent = 'Invalid'; txt.style.color = '#cc4444';
-      toast('Invalid API key');
+      toast('Invalid API key — check and try again');
     }
   } catch(e) {
-    dot.className = 'api-dot err'; txt.textContent = 'Error'; txt.style.color = '#cc4444';
+    dot.className = 'api-dot err'; txt.textContent = 'Network error'; txt.style.color = '#cc4444';
+    toast('Network error');
   }
 }
 
@@ -1251,12 +1292,8 @@ function buildScript(type) {
     const bank = DJ_COMMENTS.hype[vibe] || DJ_COMMENTS.hype.hiphop;
     return fill(pick(bank));
   }
-  if (type === 'funny') {
-    return fill(pick(DJ_COMMENTS.funny));
-  }
-  if (type === 'shoutout') {
-    return fill(pick(DJ_COMMENTS.shoutouts));
-  }
+  if (type === 'funny')    return fill(pick(DJ_COMMENTS.funny));
+  if (type === 'shoutout') return fill(pick(DJ_COMMENTS.shoutouts));
   if (type === 'timeofday') {
     const tod = getTimeOfDay();
     return fill(pick(DJ_COMMENTS.timeOfDay[tod]));
@@ -1266,20 +1303,33 @@ function buildScript(type) {
 
 // ── ElevenLabs DJ Drop ─────────────────────────────────
 function requestDrop(type) {
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key) { toast('Add your ElevenLabs key in settings'); return; }
+  const key = getApiKey();
+  if (!key) {
+    toast('Open settings and enter your ElevenLabs API key');
+    if (!document.getElementById('settingsContent').classList.contains('open')) toggleSettings();
+    return;
+  }
   if (!currentPlaylist || queue.length === 0) { toast('Select a playlist first'); return; }
   doDjDrop(type, false);
 }
 
 async function doDjDrop(type, thenPlay = false) {
-  if (isSpeaking) { if (thenPlay) doPlay(); return; }
-  const key = document.getElementById('apiKey').value.trim();
-  if (!key) { if (thenPlay) doPlay(); return; }
+  if (isSpeaking) {
+    // Already speaking — if we need to play next, just do it
+    if (thenPlay) doPlay();
+    return;
+  }
+
+  const key = getApiKey();
+  if (!key) {
+    if (thenPlay) doPlay();
+    return;
+  }
 
   const script = buildScript(type);
   isSpeaking = true;
 
+  // Update DJ panel UI
   const typeLabels = { transition: 'TRANSITION', hype: 'HYPE DROP', funny: 'FUNNY', shoutout: 'SHOUTOUT', timeofday: 'TIME CHECK' };
   document.getElementById('djDropType').textContent = typeLabels[type] || '';
   document.getElementById('djIndicator').classList.add('active');
@@ -1297,60 +1347,52 @@ async function doDjDrop(type, thenPlay = false) {
       })
     });
 
-    if (!r.ok) { isSpeaking = false; if (thenPlay) doPlay(); return; }
+    if (!r.ok) {
+      const errData = await r.json().catch(() => ({}));
+      console.error('ElevenLabs error:', r.status, errData);
+      toast('DJ error ' + r.status + ' — check API key');
+      isSpeaking = false;
+      if (thenPlay) doPlay();
+      return;
+    }
 
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     const djAudio = new Audio();
     djAudio.src = url;
     djAudio.volume = audio.volume;
-    const p = djAudio.play();
-    if (p) p.catch(e => { console.error(e); isSpeaking = false; URL.revokeObjectURL(url); if (thenPlay) doPlay(); });
-    djAudio.addEventListener('ended', () => { URL.revokeObjectURL(url); isSpeaking = false; if (thenPlay) doPlay(); });
-    djAudio.addEventListener('error', () => { URL.revokeObjectURL(url); isSpeaking = false; if (thenPlay) doPlay(); });
+
+    const playPromise = djAudio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(err => {
+        console.error('DJ audio play failed:', err);
+        URL.revokeObjectURL(url);
+        isSpeaking = false;
+        if (thenPlay) doPlay();
+      });
+    }
+
+    djAudio.addEventListener('ended', () => {
+      URL.revokeObjectURL(url);
+      isSpeaking = false;
+      if (thenPlay) doPlay();
+    });
+
+    djAudio.addEventListener('error', () => {
+      URL.revokeObjectURL(url);
+      isSpeaking = false;
+      if (thenPlay) doPlay();
+    });
 
   } catch(e) {
-    console.error('DJ drop error:', e);
+    console.error('DJ drop fetch error:', e);
     isSpeaking = false;
     if (thenPlay) doPlay();
   }
 }
 
-// Override nextTrack to use proper drop then play flow
-const _origNextTrack = nextTrack;
-
-audio.addEventListener('ended', () => {
-  isPlaying = false;
-  updatePlayBtn();
-  document.getElementById('equalizer').style.display = 'none';
-  // Pick next
-  if (queue.length === 0) return;
-  if (isShuffle) {
-    let next;
-    do { next = Math.floor(Math.random() * queue.length); }
-    while (queue.length > 1 && next === currentIndex);
-    currentIndex = next;
-  } else {
-    currentIndex = (currentIndex + 1) % queue.length;
-  }
-  if (djActive) {
-    // Randomly choose drop type for variety
-    const roll = Math.random();
-    let dropType = 'transition';
-    if (roll < 0.6) dropType = 'transition';
-    else if (roll < 0.75) dropType = 'shoutout';
-    else if (roll < 0.9) dropType = 'funny';
-    else dropType = 'timeofday';
-    doDjDrop(dropType, true);
-  } else {
-    doPlay();
-  }
-}, { once: false });
-
 // ── Init ───────────────────────────────────────────────
 buildPlaylistGrid();
-
-// Default shuffle on
 isShuffle = true;
 document.getElementById('shuffleBtn').classList.add('active-btn');
 </script>
