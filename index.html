@@ -998,10 +998,10 @@ async function loadVoices() {
   const key = getApiKey();
   if (!key) { toast('Enter your API key first'); return; }
   const grid = document.getElementById('voiceGrid');
-  grid.innerHTML = '<div class="voice-loading">Loading voices...</div>';
+  setStatusMessage(grid, 'voice-loading', 'Loading voices...');
   try {
     const r = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
-    if (!r.ok) { grid.innerHTML = '<div class="voice-error">Could not load voices — check API key</div>'; return; }
+    if (!r.ok) { setStatusMessage(grid, 'voice-error', 'Could not load voices — check API key'); return; }
     const data = await r.json();
     availableVoices = (data.voices || []).sort((a, b) => {
       const aCustom = a.category === 'cloned' || a.category === 'generated';
@@ -1012,28 +1012,61 @@ async function loadVoices() {
     renderVoiceGrid();
     toast(availableVoices.length + ' voices loaded');
   } catch(e) {
-    grid.innerHTML = '<div class="voice-error">Network error loading voices</div>';
+    setStatusMessage(grid, 'voice-error', 'Network error loading voices');
   }
 }
 
 function renderVoiceGrid() {
   const grid = document.getElementById('voiceGrid');
-  if (!availableVoices.length) { grid.innerHTML = '<div class="voice-loading">No voices found</div>'; return; }
-  grid.innerHTML = availableVoices.map(v => {
+  grid.textContent = '';
+  if (!availableVoices.length) {
+    const d = document.createElement('div');
+    d.className = 'voice-loading';
+    d.textContent = 'No voices found';
+    grid.appendChild(d);
+    return;
+  }
+
+  availableVoices.forEach(v => {
     const isActive = v.voice_id === selectedVoice;
     const category = v.category === 'cloned' ? 'Custom' : v.category === 'generated' ? 'Generated' : 'Premade';
     const gender = (v.labels && v.labels.gender) ? v.labels.gender : '';
     const accent = (v.labels && v.labels.accent) ? v.labels.accent : '';
     const desc = [gender, accent].filter(Boolean).join(', ');
-    return `<div class="voice-card ${isActive ? 'active' : ''}" data-id="${v.voice_id}" onclick="selectVoice('${v.voice_id}', this)">
-      <span class="vname">${escapeHtml(v.name)}</span>
-      <span class="vcategory">${category}</span>
-      ${desc ? `<span class="vdesc">${escapeHtml(desc)}</span>` : ''}
-      <button class="voice-preview-btn" id="prev-${v.voice_id}" onclick="event.stopPropagation(); previewVoice('${v.voice_id}')">
-        <span class="preview-icon">▶</span> Preview
-      </button>
-    </div>`;
-  }).join('');
+
+    const card = document.createElement('div');
+    card.className = 'voice-card' + (isActive ? ' active' : '');
+    card.setAttribute('data-id', v.voice_id);
+    card.addEventListener('click', () => selectVoice(v.voice_id, card));
+
+    const name = document.createElement('span');
+    name.className = 'vname';
+    name.textContent = v.name;
+
+    const cat = document.createElement('span');
+    cat.className = 'vcategory';
+    cat.textContent = category;
+
+    card.appendChild(name);
+    card.appendChild(cat);
+
+    if (desc) {
+      const descEl = document.createElement('span');
+      descEl.className = 'vdesc';
+      descEl.textContent = desc;
+      card.appendChild(descEl);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'voice-preview-btn';
+    btn.id = 'prev-' + v.voice_id;
+    btn.type = 'button';
+    setPreviewButtonLabel(btn, '▶', 'Preview');
+    btn.addEventListener('click', (ev) => { ev.stopPropagation(); previewVoice(v.voice_id); });
+
+    card.appendChild(btn);
+    grid.appendChild(card);
+  });
 }
 
 function selectVoice(voiceId, card) {
@@ -1048,8 +1081,25 @@ function selectVoice(voiceId, card) {
 function resetPreviewBtns() {
   document.querySelectorAll('.voice-preview-btn').forEach(b => {
     b.classList.remove('playing');
-    b.innerHTML = '<span class="preview-icon">▶</span> Preview';
+    setPreviewButtonLabel(b, '▶', 'Preview');
   });
+}
+
+function setStatusMessage(container, className, text) {
+  container.textContent = '';
+  const msg = document.createElement('div');
+  msg.className = className;
+  msg.textContent = text;
+  container.appendChild(msg);
+}
+
+function setPreviewButtonLabel(btn, icon, label) {
+  btn.textContent = '';
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'preview-icon';
+  iconSpan.textContent = icon;
+  btn.appendChild(iconSpan);
+  btn.appendChild(document.createTextNode(' ' + label));
 }
 
 async function previewVoice(voiceId) {
@@ -1057,7 +1107,7 @@ async function previewVoice(voiceId) {
   if (!key) { toast('Enter API key first'); return; }
   if (previewAudio) { previewAudio.pause(); previewAudio = null; resetPreviewBtns(); }
   const btn = document.getElementById('prev-' + voiceId);
-  if (btn) { btn.classList.add('playing'); btn.innerHTML = '<span class="preview-icon">⏳</span> Loading...'; }
+  if (btn) { btn.classList.add('playing'); setPreviewButtonLabel(btn, '⏳', 'Loading...'); }
   try {
     const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voiceId, {
       method: 'POST',
@@ -1069,20 +1119,20 @@ async function previewVoice(voiceId) {
         voice_settings: { stability: 0.25, similarity_boost: 0.75, style: 0.85, use_speaker_boost: true }
       })
     });
-    if (!r.ok) { toast('Preview failed — ' + r.status); if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; } return; }
+    if (!r.ok) { toast('Preview failed — ' + r.status); if (btn) { btn.classList.remove('playing'); setPreviewButtonLabel(btn, '▶', 'Preview'); } return; }
     const blob = await r.blob();
     const url = URL.createObjectURL(blob);
     previewAudio = new Audio(url);
     previewAudio.volume = document.getElementById('volSlider').value / 100;
-    if (btn) btn.innerHTML = '<span class="preview-icon">▶</span> Playing...';
-    previewAudio.play().catch(e => { if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; } });
+    if (btn) setPreviewButtonLabel(btn, '▶', 'Playing...');
+    previewAudio.play().catch(e => { if (btn) { btn.classList.remove('playing'); setPreviewButtonLabel(btn, '▶', 'Preview'); } });
     previewAudio.addEventListener('ended', () => {
       URL.revokeObjectURL(url); previewAudio = null;
-      if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; }
+      if (btn) { btn.classList.remove('playing'); setPreviewButtonLabel(btn, '▶', 'Preview'); }
     });
   } catch(e) {
     toast('Preview failed');
-    if (btn) { btn.classList.remove('playing'); btn.innerHTML = '<span class="preview-icon">▶</span> Preview'; }
+    if (btn) { btn.classList.remove('playing'); setPreviewButtonLabel(btn, '▶', 'Preview'); }
   }
 }
 
@@ -1090,24 +1140,42 @@ async function previewVoice(voiceId) {
 // ── Build Playlist Grid ────────────────────────────────
 function buildPlaylistGrid() {
   const grid = document.getElementById('playlistGrid');
-  grid.innerHTML = Object.entries(PLAYLISTS).map(([name, pl]) => `
-    <div class="playlist-card" data-key="${escapeHtml(name)}"
-      style="--genre-color: ${pl.color}"
-      onclick="selectPlaylist('${escapeHtml(name)}')">
-      <div class="playlist-emoji">${pl.emoji}</div>
-      <div class="playlist-name">${escapeHtml(name)}</div>
-      <div class="playlist-count">${pl.songs.length} track${pl.songs.length !== 1 ? 's' : ''}</div>
-    </div>
-  `).join('');
+  grid.textContent = '';
+  Object.entries(PLAYLISTS).forEach(([name, pl]) => {
+    const card = document.createElement('div');
+    card.className = 'playlist-card';
+    card.setAttribute('data-key', name);
+    card.style.setProperty('--genre-color', pl.color);
+    card.addEventListener('click', () => selectPlaylist(name));
+
+    const emoji = document.createElement('div');
+    emoji.className = 'playlist-emoji';
+    emoji.textContent = pl.emoji || '';
+
+    const pname = document.createElement('div');
+    pname.className = 'playlist-name';
+    pname.textContent = name;
+
+    const pcount = document.createElement('div');
+    pcount.className = 'playlist-count';
+    pcount.textContent = pl.songs.length + ' track' + (pl.songs.length !== 1 ? 's' : '');
+
+    card.appendChild(emoji);
+    card.appendChild(pname);
+    card.appendChild(pcount);
+    grid.appendChild(card);
+  });
 }
 
 // ── Select Playlist ────────────────────────────────────
 function selectPlaylist(key) {
   currentPlaylistKey = key;
   currentPlaylist = PLAYLISTS[key];
-
   document.querySelectorAll('.playlist-card').forEach(c => c.classList.remove('active'));
-  document.querySelector(`[data-key="${key}"]`).classList.add('active');
+  // Find the matching playlist card by attribute value (safer than using a selector with unescaped text)
+  const cards = Array.from(document.querySelectorAll('.playlist-card'));
+  const matched = cards.find(c => c.getAttribute('data-key') === key);
+  if (matched) matched.classList.add('active');
   document.documentElement.style.setProperty('--active-color', currentPlaylist.color);
 
   queue = currentPlaylist.songs.map((s, i) => {
@@ -1145,7 +1213,11 @@ function renderTracks() {
   const meta = document.getElementById('tracklistMeta');
 
   if (!currentPlaylist) {
-    list.innerHTML = '<div class="empty-state">Select a playlist above</div>';
+    list.textContent = '';
+    const msg = document.createElement('div');
+    msg.className = 'empty-state';
+    msg.textContent = 'Select a playlist above';
+    list.appendChild(msg);
     return;
   }
 
@@ -1153,19 +1225,42 @@ function renderTracks() {
   meta.textContent = queue.length + ' tracks';
 
   if (queue.length === 0) {
-    list.innerHTML = `<div class="empty-state">No tracks in this playlist yet.</div>`;
+    list.textContent = '';
+    const msg = document.createElement('div');
+    msg.className = 'empty-state';
+    msg.textContent = 'No tracks in this playlist yet.';
+    list.appendChild(msg);
     return;
   }
 
-  list.innerHTML = queue.map((t, i) => `
-    <div class="track-item ${i === currentIndex && isPlaying ? 'playing' : ''}" onclick="playIndex(${i})">
-      <div class="track-num">${i === currentIndex && isPlaying ? '▶' : i + 1}</div>
-      <div class="track-info">
-        <div class="track-title">${escapeHtml(t.title)}</div>
-        <div class="track-artist">${escapeHtml(t.artist)}</div>
-      </div>
-    </div>
-  `).join('');
+  list.textContent = '';
+  queue.forEach((t, i) => {
+    const item = document.createElement('div');
+    item.className = 'track-item' + (i === currentIndex && isPlaying ? ' playing' : '');
+    item.addEventListener('click', () => playIndex(i));
+
+    const num = document.createElement('div');
+    num.className = 'track-num';
+    num.textContent = (i === currentIndex && isPlaying) ? '▶' : (i + 1);
+
+    const info = document.createElement('div');
+    info.className = 'track-info';
+
+    const title = document.createElement('div');
+    title.className = 'track-title';
+    title.textContent = t.title;
+
+    const artist = document.createElement('div');
+    artist.className = 'track-artist';
+    artist.textContent = t.artist;
+
+    info.appendChild(title);
+    info.appendChild(artist);
+
+    item.appendChild(num);
+    item.appendChild(info);
+    list.appendChild(item);
+  });
 }
 
 // ── Playback ───────────────────────────────────────────
@@ -1177,7 +1272,8 @@ function playIndex(i) {
 function doPlay() {
   if (queue.length === 0) return;
   const t = queue[currentIndex];
-  audio.src = encodeURIComponent(t.file).replace(/%2F/g, '/');
+  // Use encodeURI so path separators remain intact while spaces and unsafe chars are encoded
+  audio.src = encodeURI(t.file);
   audio.load();
   const p = audio.play();
   if (p !== undefined) {
@@ -1336,7 +1432,7 @@ async function preloadNextDrop() {
   }
 
   try {
-    const r = await fetch(\`https://api.elevenlabs.io/v1/text-to-speech/\${selectedVoice}\`, {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`, {
       method: 'POST',
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
       body: JSON.stringify({
